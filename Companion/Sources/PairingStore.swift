@@ -14,6 +14,7 @@ final class PairingStore {
     private(set) var code = PairingStore.makeCode()
     private var devices: [Device]
     private var failedAttempts = 0
+    private var announced: (code: String, at: Date)?
     private let fileURL: URL
 
     init() {
@@ -32,7 +33,7 @@ final class PairingStore {
             // Four digits are only 10,000 guesses; don't let anyone make many of them.
             if failedAttempts >= 5 {
                 rotateCode()
-                log("Too many wrong pairing codes. New code: \(code)")
+                announceCode(reason: "Too many wrong pairing codes.")
             }
             return nil
         }
@@ -41,6 +42,23 @@ final class PairingStore {
         save()
         rotateCode()
         return token
+    }
+
+    /// Logs the code and shows it as a notification, since the companion
+    /// usually runs at login with no terminal anyone is looking at.
+    func announceCode(reason: String) {
+        log("\(reason) Pairing code: \(code)")
+        // A phone that reconnects while still unpaired shouldn't bring up the same code again.
+        if let announced, announced.code == code, Date.now.timeIntervalSince(announced.at) < 60 { return }
+        announced = (code, .now)
+        let notification = Process()
+        notification.executableURL = URL(filePath: "/usr/bin/osascript")
+        // Passed as arguments rather than spliced into the script, so no quoting can break it.
+        notification.arguments = [
+            "-e", "on run argv", "-e", "display notification (item 1 of argv) with title (item 2 of argv)", "-e", "end run",
+            "Enter \(code) on your iPhone.", "MPV Remote pairing code",
+        ]
+        try? notification.run()
     }
 
     private func rotateCode() {

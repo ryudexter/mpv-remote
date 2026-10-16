@@ -15,16 +15,25 @@ Two parts that talk to each other:
 1. mpv must have its IPC socket switched on — `--input-ipc-server=/path` on the
    command line or `input-ipc-server=/path` in `mpv.conf`. (The `mpv-open`
    launcher in `~/.config/mpv` already does this with `/tmp/mpv-single.sock`.)
-2. Start the companion with that same path:
+2. Install the companion as a login item, giving it that same path:
+
+   ```bash
+   ./Companion/login-item.sh install /tmp/mpv-single.sock
+   ```
+
+   It starts now and at every login, restarts itself if it ever quits, and
+   waits for mpv to come and go. Rerun the same command after changing the
+   companion's code; `./Companion/login-item.sh uninstall` removes it.
+   Its log is `~/Library/Logs/MPV Remote/companion.log`.
+
+   To run it in a terminal instead (stop the login item first, they share a port):
 
    ```bash
    swift run --package-path Companion mpv-remote --socket /tmp/mpv-single.sock
    ```
-
-   It prints a 4-digit pairing code and keeps running. mpv can come and go;
-   the companion reconnects on its own.
 3. Run the app from Xcode. It finds the Mac on the network by itself; tap it
-   and enter the code. After that the phone reconnects without asking.
+   and enter the 4-digit code, which the Mac shows as a notification (and
+   writes to the log). After that the phone reconnects without asking.
 
 To run the app on a real iPhone, pick your team under *Signing & Capabilities*
 and change the bundle identifier from `com.example.mpvremote`.
@@ -51,6 +60,7 @@ iPhone app  ──WebSocket (Wi-Fi, Bonjour _mpvremote._tcp, port 7655)──▶
 
 - The Wi-Fi connection is not encrypted yet (plain `ws://`). Fine on a home
   network; it should move to TLS before an App Store release.
-- The companion is a terminal program; a menu bar app is the obvious next step.
+- The companion has no interface of its own; a menu bar app showing the
+  connection and the pairing code is the obvious next step.
 - Next/Previous use mpv's stock `playlist-next`/`playlist-prev`, so they skip
   the resume-point and shuffle-history logic that `x`/`z` run in this mpv setup.

@@ -99,7 +99,7 @@ final class RemoteServer {
                 authorize(session, deviceName: deviceName)
             } else {
                 session.send(.pairingRequired(computerName: computerName))
-                log("A phone wants to pair. Pairing code: \(pairing.code)")
+                pairing.announceCode(reason: "A phone wants to pair.")
             }
         case .pair(let code, let deviceName):
             if let token = pairing.pair(code: code, deviceName: deviceName) {
