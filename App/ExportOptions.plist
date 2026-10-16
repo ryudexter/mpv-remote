@@ -8,6 +8,9 @@
 	<string>upload</string>
 	<key>signingStyle</key>
 	<string>automatic</string>
+	<!-- testflight.sh archives unsigned, so the archive carries no team of its own. -->
+	<key>teamID</key>
+	<string>UJ978AQ83J</string>
 	<!-- Gives each upload a fresh build number, so the project's never has to be bumped by hand. -->
 	<key>manageAppVersionAndBuildNumber</key>
 	<true/>

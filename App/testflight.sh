@@ -12,8 +12,11 @@ archive="$build/MPVRemote.xcarchive"
 
 rm -rf "$archive" "$build/export"
 echo "Archiving…"
+# Unsigned on purpose: automatic signing would sign the archive for development,
+# which needs a registered iPhone. The export below signs it for distribution,
+# which doesn't.
 xcodebuild -quiet -project "$here/MPVRemote.xcodeproj" -scheme MPVRemote -configuration Release \
-    -destination 'generic/platform=iOS' -archivePath "$archive" -allowProvisioningUpdates archive
+    -destination 'generic/platform=iOS' -archivePath "$archive" CODE_SIGNING_ALLOWED=NO archive
 echo "Uploading to App Store Connect…"
 xcodebuild -quiet -exportArchive -archivePath "$archive" -exportOptionsPlist "$here/ExportOptions.plist" \
     -exportPath "$build/export" -allowProvisioningUpdates

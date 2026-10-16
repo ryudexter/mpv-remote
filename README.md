@@ -57,7 +57,21 @@ Then, for every build:
 ```
 
 Install the TestFlight app on your iPhone; builds arrive there after Apple
-processes them. Internal testers need no review; inviting people outside your
+processes them.
+
+### App Store art
+
+`AppStore/` holds the product-page header and the 6.9-inch screenshots.
+Both are generated, as is the app icon:
+
+```bash
+swift App/Tools/make-icon.swift App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+swift App/Tools/make-store-art.swift <raw-screenshots-dir> App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png AppStore
+```
+
+The raw screenshots come from the iPhone 18 Pro Max simulator
+(`xcrun simctl io booted screenshot …`), named as in the `shots` list at the
+top of `make-store-art.swift`. Internal testers need no review; inviting people outside your
 team does go through a short Beta App Review.
 
 ## How it fits together
