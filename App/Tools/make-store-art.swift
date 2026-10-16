@@ -1,7 +1,8 @@
 import AppKit
 
 // Builds the App Store art from raw simulator screenshots (1320×2868, the
-// 6.9-inch size): captioned screenshots, plus the wide product-page header.
+// 6.9-inch size): captioned screenshots for large and medium iPhones, plus
+// the wide product-page header.
 //
 //   swift make-store-art.swift <raw-dir> <icon.png> <out-dir>
 //
@@ -34,6 +35,7 @@ func render(width: Int, height: Int, to url: URL, _ draw: (CGRect) -> Void) {
     NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
     draw(CGRect(x: 0, y: 0, width: width, height: height))
     NSGraphicsContext.current = nil
+    try! FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil)!
     CGImageDestinationAddImage(destination, ctx.makeImage()!, nil)
     CGImageDestinationFinalize(destination)
@@ -86,20 +88,27 @@ func raw(_ name: String) -> NSImage {
     NSImage(contentsOf: rawDir.appending(path: "\(name).png"))!
 }
 
-// MARK: Screenshots, 1320×2868
+// MARK: Screenshots: large (6.9-inch) and medium (6.1/6.3-inch) iPhones
 
-for (index, shot) in shots.enumerated() {
-    let url = outDir.appending(path: "screenshots/\(index + 1)-\(shot.file.split(separator: "-").last!).png")
-    render(width: 1320, height: 2868, to: url) { rect in
-        let phoneRect = CGRect(x: (1320 - 1030) / 2, y: 90, width: 1030, height: 1030 * 2868 / 1320)
-        backdrop(rect, glowAt: CGPoint(x: phoneRect.midX, y: phoneRect.midY + 300), glowRadius: 1100)
-        let lines = CGFloat(shot.headline.split(separator: "\n").count)
-        let headlineTop: CGFloat = 2868 - 170
-        text(shot.headline, size: 104, weight: .bold, color: .white, alignment: .center,
-             in: CGRect(x: 80, y: headlineTop - 118 * lines, width: 1160, height: 118 * lines))
-        text(shot.subline, size: 50, weight: .medium, color: color(0xCDBEFF, 0.9), alignment: .center,
-             in: CGRect(x: 80, y: headlineTop - 118 * lines - 100, width: 1160, height: 70))
-        phone(raw(shot.file), in: phoneRect.offsetBy(dx: 0, dy: -(phoneRect.maxY - (headlineTop - 118 * lines - 170))))
+for (width, height) in [(1320, 2868), (1179, 2556)] {
+    // Laid out for 1320 wide; everything scales by k for the smaller size.
+    let k = CGFloat(width) / 1320
+    let W = CGFloat(width), H = CGFloat(height)
+    for (index, shot) in shots.enumerated() {
+        let url = outDir.appending(path: "screenshots/\(width)x\(height)/\(index + 1)-\(shot.file.split(separator: "-").last!).png")
+        render(width: width, height: height, to: url) { rect in
+            backdrop(rect, glowAt: CGPoint(x: W / 2, y: H * 0.53), glowRadius: 1100 * k)
+            let lines = CGFloat(shot.headline.split(separator: "\n").count)
+            let headlineHeight = 118 * k * lines
+            let headlineTop = H - 170 * k
+            text(shot.headline, size: 104 * k, weight: .bold, color: .white, alignment: .center,
+                 in: CGRect(x: 80 * k, y: headlineTop - headlineHeight, width: W - 160 * k, height: headlineHeight))
+            text(shot.subline, size: 50 * k, weight: .medium, color: color(0xCDBEFF, 0.9), alignment: .center,
+                 in: CGRect(x: 80 * k, y: headlineTop - headlineHeight - 100 * k, width: W - 160 * k, height: 70 * k))
+            let phoneWidth = 1030 * k, phoneHeight = phoneWidth * 2868 / 1320
+            let phoneTop = headlineTop - headlineHeight - 170 * k
+            phone(raw(shot.file), in: CGRect(x: (W - phoneWidth) / 2, y: phoneTop - phoneHeight, width: phoneWidth, height: phoneHeight))
+        }
     }
 }
 

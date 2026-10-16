@@ -1,6 +1,8 @@
 # MPV Remote
 
 Control mpv on your computer from your iPhone, over Wi-Fi.
+Coming to the App Store as **MPV Player Remote** —
+[support](SUPPORT.md) · [privacy policy](PRIVACY.md).
 
 Two parts that talk to each other:
 
@@ -61,7 +63,8 @@ processes them.
 
 ### App Store art
 
-`AppStore/` holds the product-page header and the 6.9-inch screenshots.
+`AppStore/` holds the product-page header and the iPhone screenshots, in the
+large (1320×2868) and medium (1179×2556) sizes.
 Both are generated, as is the app icon:
 
 ```bash
