@@ -36,7 +36,29 @@ Two parts that talk to each other:
    writes to the log). After that the phone reconnects without asking.
 
 To run the app on a real iPhone, pick your team under *Signing & Capabilities*
-and change the bundle identifier from `com.example.mpvremote`.
+(the bundle identifier is `com.ryudexter.mpvremote`).
+
+## TestFlight
+
+Once:
+
+1. Sign in to Xcode with your developer Apple ID (*Settings → Accounts*) and
+   pick your team under *Signing & Capabilities*.
+2. In [App Store Connect](https://appstoreconnect.apple.com), *Apps → + → New App*:
+   iOS, any name, bundle ID `com.ryudexter.mpvremote`, any SKU. (The bundle ID
+   only appears in that list after Xcode has registered it — building once with
+   your team selected does that.)
+3. Under *TestFlight → Internal Testing*, make a group and add yourself.
+
+Then, for every build:
+
+```bash
+./App/testflight.sh
+```
+
+Install the TestFlight app on your iPhone; builds arrive there after Apple
+processes them. Internal testers need no review; inviting people outside your
+team does go through a short Beta App Review.
 
 ## How it fits together
 
