@@ -13,35 +13,39 @@ versions if you can.
 ## What you need
 
 - An iPhone with iOS 26 or later
-- A Mac running mpv and the MPV Player Remote companion
+- A Mac (macOS 14 or later) with mpv and the MPV Remote script
 - Both on the same Wi-Fi network
+
+Just want to look around first? Tap **Try the Demo** in the app — no Mac
+needed.
 
 ## Setting up
 
-1. Install and start the companion on your Mac (see the
-   [README](README.md#running-it) for now; a downloadable Mac app is coming).
-2. Make sure mpv runs with its control socket switched on: add
-   `input-ipc-server=/tmp/mpvsocket` to your `mpv.conf`, or start mpv with
-   `--input-ipc-server=/tmp/mpvsocket`.
-3. Open MPV Player Remote on your iPhone, allow it to find devices on your
-   local network, tap your Mac, and enter the 4-digit code your Mac shows.
+1. Get the MPV Remote script for mpv (the download is coming soon to this
+   repository's Releases page; until then, build it with
+   `./Companion/package.sh` as described in the [README](README.md#running-it)).
+2. Move the `mpv-remote` folder into `~/.config/mpv/scripts/`. That's all on
+   the Mac: it starts by itself whenever mpv does, and needs no changes to
+   `mpv.conf`.
+3. Open a video in mpv. Then open MPV Player Remote on your iPhone, allow it to
+   find devices on your local network, and tap your Mac.
+4. Enter the 4-digit code that appears over the video in mpv.
 
 ## Common problems
 
 **My Mac doesn't appear in the list.**
-Check that the companion is running and that both devices are on the same
-Wi-Fi. Guest and hotel networks often stop devices from seeing each other. If
-you declined the local network prompt, turn it back on in
-*Settings → Privacy & Security → Local Network → MPV Player Remote*. You can
-also tap *Enter Address Manually* and type your Mac's IP address.
+The script only runs while mpv is open, so open a video first. Both devices
+must be on the same Wi-Fi; guest and hotel networks often stop devices from
+seeing each other. If you declined the local network prompt, turn it back on
+in *Settings → Privacy & Security → Local Network → MPV Player Remote*. You
+can also tap *Enter Address Manually* and type your Mac's IP address.
 
-**It connects, but says "Nothing Playing".**
-mpv isn't reachable through its control socket. Make sure it was started with
-the same `input-ipc-server` path the companion uses.
+**I have several mpv windows open.**
+The remote controls the first one you opened. Once that one closes, the next
+mpv window you open takes over.
 
 **I lost the pairing code.**
-Cancel and tap your Mac again; the companion shows the code again as a
-notification on your Mac.
+Cancel and tap your Mac again; the code appears over the video again.
 
 ## Privacy
 

@@ -44,8 +44,11 @@ final class PairingStore {
         return token
     }
 
+    /// Called with each code worth showing someone, e.g. on mpv's own screen.
+    var onAnnounce: ((String) -> Void)?
+
     /// Logs the code and shows it as a notification, since the companion
-    /// usually runs at login with no terminal anyone is looking at.
+    /// usually runs in the background with no terminal anyone is looking at.
     func announceCode(reason: String) {
         log("\(reason) Pairing code: \(code)")
         // A phone that reconnects while still unpaired shouldn't bring up the same code again.
@@ -59,6 +62,7 @@ final class PairingStore {
             "Enter \(code) on your iPhone.", "MPV Remote pairing code",
         ]
         try? notification.run()
+        onAnnounce?(code)
     }
 
     private func rotateCode() {

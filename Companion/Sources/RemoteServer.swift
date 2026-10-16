@@ -35,6 +35,10 @@ final class RemoteServer {
         listener.stateUpdateHandler = { [port] state in
             switch state {
             case .ready: log("Listening on port \(port), advertised over Bonjour")
+            case .failed(.posix(.EADDRINUSE)):
+                // Most likely a second mpv window: the first one's helper already serves the phone.
+                log("Port \(port) is already in use, probably by another MPV Remote companion; quitting")
+                exit(0)
             case .failed(let error): log("Listener failed: \(error)"); exit(1)
             default: break
             }

@@ -41,6 +41,14 @@ struct ComputerPickerView: View {
                         isEnteringAddress = true
                     }
                 }
+
+                Section {
+                    Button("Try the Demo", systemImage: "play.tv") {
+                        remote.startDemo()
+                    }
+                } footer: {
+                    Text("Explore the app with a pretend player. No Mac needed.")
+                }
             }
             .navigationTitle("Connect")
             .navigationBarTitleDisplayMode(.inline)

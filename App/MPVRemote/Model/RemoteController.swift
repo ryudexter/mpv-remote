@@ -22,6 +22,10 @@ final class RemoteController {
     /// Set when the last pairing code was wrong, cleared on the next attempt.
     private(set) var pairingFailed = false
 
+    /// Set while the built-in demo stands in for a real computer.
+    private var demo: DemoPlayer?
+    var isDemo: Bool { demo != nil }
+
     /// When `state` arrived, so playback position can be extrapolated between updates.
     private var stateReceivedAt = Date.now
     private var connection: NWConnection?
@@ -49,8 +53,21 @@ final class RemoteController {
         connect()
     }
 
+    /// Plays with the pretend player instead of a computer. Not saved, so the
+    /// next launch starts at the computer list again.
+    func startDemo() {
+        disconnect()
+        let demo = DemoPlayer()
+        demo.onChange = { [weak self] state in self?.receive(state) }
+        self.demo = demo
+        computer = SavedComputer(name: "Demo Mac", address: .demo, token: "demo")
+        status = .connected
+        receive(demo.state)
+    }
+
     func forgetComputer() {
         disconnect()
+        demo = nil
         SavedComputer.forget()
         computer = nil
         status = .connecting
@@ -80,6 +97,10 @@ final class RemoteController {
     // MARK: Commands
 
     func send(_ command: PlayerCommand) {
+        if let demo {
+            demo.perform(command)
+            return
+        }
         applyOptimistically(command)
         send(.command(command))
     }
@@ -126,7 +147,7 @@ final class RemoteController {
     // MARK: Connection
 
     func connect() {
-        guard let computer else { return }
+        guard let computer, let endpoint = computer.endpoint else { return }
         disconnect()
         if status != .needsPairing { status = .connecting }
 
@@ -135,7 +156,7 @@ final class RemoteController {
         websocket.autoReplyPing = true
         parameters.defaultProtocolStack.applicationProtocols.insert(websocket, at: 0)
 
-        let connection = NWConnection(to: computer.endpoint, using: parameters)
+        let connection = NWConnection(to: endpoint, using: parameters)
         connection.stateUpdateHandler = { [weak self] newState in
             MainActor.assumeIsolated { self?.connection(connection, changedTo: newState) }
         }
@@ -207,9 +228,13 @@ final class RemoteController {
         case .pairingFailed:
             pairingFailed = true
         case .state(let newState):
-            state = newState
-            stateReceivedAt = .now
+            receive(newState)
         }
+    }
+
+    private func receive(_ newState: PlayerState) {
+        state = newState
+        stateReceivedAt = .now
     }
 
     private func send(_ message: ClientMessage) {

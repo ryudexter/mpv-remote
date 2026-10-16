@@ -2,18 +2,23 @@ import Foundation
 import RemoteProtocol
 
 let usage = """
-    Usage: mpv-remote [--socket PATH] [--port PORT] [--name NAME]
+    Usage: mpv-remote [--socket PATH] [--port PORT] [--name NAME] [--exit-with-mpv] [--log FILE]
 
-      --socket PATH  mpv's IPC socket, as given to --input-ipc-server
-                     (default: /tmp/mpvsocket)
-      --port PORT    port for the phone app (default: \(RemoteService.defaultPort))
-      --name NAME    how this computer appears on the phone
-                     (default: the computer's name)
+      --socket PATH    mpv's IPC socket, as given to --input-ipc-server
+                       (default: /tmp/mpvsocket)
+      --port PORT      port for the phone app (default: \(RemoteService.defaultPort))
+      --name NAME      how this computer appears on the phone
+                       (default: the computer's name)
+      --exit-with-mpv  quit when mpv does, instead of waiting for it to come
+                       back (how the mpv script runs it)
+      --log FILE       append output to FILE instead of printing it
     """
 
 var socketPath = "/tmp/mpvsocket"
 var port = RemoteService.defaultPort
 var computerName = Host.current().localizedName ?? "Mac"
+var exitsWithMPV = false
+var logPath: String?
 
 var arguments = CommandLine.arguments.dropFirst()
 while let argument = arguments.popFirst() {
@@ -21,6 +26,8 @@ while let argument = arguments.popFirst() {
     case "--socket": socketPath = arguments.popFirst() ?? socketPath
     case "--port": port = arguments.popFirst().flatMap(UInt16.init) ?? port
     case "--name": computerName = arguments.popFirst() ?? computerName
+    case "--exit-with-mpv": exitsWithMPV = true
+    case "--log": logPath = arguments.popFirst()
     case "-h", "--help":
         print(usage)
         exit(0)
@@ -34,15 +41,22 @@ func log(_ message: String) {
     print("[\(Date.now.formatted(date: .omitted, time: .standard))] \(message)")
 }
 
+if let logPath {
+    try? FileManager.default.createDirectory(at: URL(filePath: logPath).deletingLastPathComponent(), withIntermediateDirectories: true)
+    freopen(logPath, "a", stdout)
+    freopen(logPath, "a", stderr)
+}
 // Logs should appear as they happen even when stdout is a pipe or a file.
 setvbuf(stdout, nil, _IOLBF, 0)
 signal(SIGPIPE, SIG_IGN)
 
 let pairing = PairingStore()
 let server = RemoteServer(computerName: computerName, port: port, pairing: pairing)
-let mpv = MPVConnection(socketPath: socketPath)
+let mpv = MPVConnection(socketPath: socketPath, exitsWithMPV: exitsWithMPV)
 mpv.onChange = { state, positionOnly in server.update(state, positionOnly: positionOnly) }
 server.onCommand = { command in mpv.perform(command) }
+// The code also appears over the video, where whoever is pairing is already looking.
+pairing.onAnnounce = { code in mpv.showText("MPV Remote pairing code: \(code)", seconds: 20) }
 
 print("""
     MPV Remote companion
@@ -50,10 +64,10 @@ print("""
       mpv socket:   \(socketPath)
       Pairing code: \(pairing.code)
 
-    mpv must be started with --input-ipc-server=\(socketPath)
-    (or have input-ipc-server=\(socketPath) in mpv.conf).
-
     """)
+if !exitsWithMPV {
+    print("mpv must be started with --input-ipc-server=\(socketPath) (or have it in mpv.conf).\n")
+}
 
 do {
     try server.start()

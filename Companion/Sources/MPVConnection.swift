@@ -3,7 +3,8 @@ import RemoteProtocol
 
 /// Talks to mpv over its JSON IPC socket (`--input-ipc-server`). Keeps a
 /// `PlayerState` current from property observations, turns `PlayerCommand`s
-/// into mpv commands, and reconnects whenever mpv quits and comes back.
+/// into mpv commands, and reconnects whenever mpv quits and comes back —
+/// unless it was started by mpv itself, in which case it quits along with it.
 @MainActor
 final class MPVConnection {
     /// Called on every change. `positionOnly` is true when only `time-pos`
@@ -12,9 +13,11 @@ final class MPVConnection {
     private(set) var state = PlayerState()
 
     private let socketPath: String
+    private let exitsWithMPV: Bool
     private var socket: Int32 = -1
     private var readSource: DispatchSourceRead?
     private var buffer = Data()
+    private var failedAttempts = 0
 
     private static let observedProperties = [
         "pause", "time-pos", "duration", "media-title", "volume", "volume-max", "mute",
@@ -22,12 +25,18 @@ final class MPVConnection {
         "playlist", "playlist-pos", "idle-active",
     ]
 
-    init(socketPath: String) {
+    init(socketPath: String, exitsWithMPV: Bool) {
         self.socketPath = socketPath
+        self.exitsWithMPV = exitsWithMPV
     }
 
     func start() {
         connect()
+    }
+
+    /// Shows a message on mpv's own screen for `seconds`.
+    func showText(_ text: String, seconds: Int) {
+        send(["show-text", text, seconds * 1000])
     }
 
     // MARK: Commands
@@ -56,9 +65,17 @@ final class MPVConnection {
     private func connect() {
         guard socket < 0 else { return }
         guard let socket = Self.openSocket(path: socketPath) else {
+            failedAttempts += 1
+            // Started by mpv, the socket should appear within moments. If it
+            // never does, mpv is gone and there is nothing left to wait for.
+            if exitsWithMPV && failedAttempts > 30 {
+                log("mpv's socket never appeared at \(socketPath); quitting")
+                exit(1)
+            }
             retryLater()
             return
         }
+        failedAttempts = 0
         self.socket = socket
         let source = DispatchSource.makeReadSource(fileDescriptor: socket, queue: .main)
         source.setEventHandler { [weak self] in
@@ -82,6 +99,10 @@ final class MPVConnection {
         readSource = nil
         socket = -1
         buffer.removeAll()
+        if exitsWithMPV {
+            log("mpv quit; quitting too")
+            exit(0)
+        }
         state = PlayerState()
         log("mpv went away; waiting for it to come back")
         onChange?(state, false)

@@ -102,8 +102,14 @@ struct NowPlayingView: View {
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {
             Menu {
-                Button("Forget This Computer", systemImage: "xmark.circle", role: .destructive) {
-                    remote.forgetComputer()
+                if remote.isDemo {
+                    Button("Exit Demo", systemImage: "xmark.circle") {
+                        remote.forgetComputer()
+                    }
+                } else {
+                    Button("Forget This Computer", systemImage: "xmark.circle", role: .destructive) {
+                        remote.forgetComputer()
+                    }
                 }
             } label: {
                 VStack(spacing: 0) {
@@ -127,7 +133,8 @@ struct NowPlayingView: View {
     }
 
     private var statusText: String {
-        switch remote.status {
+        if remote.isDemo { return "Demo · tap to exit" }
+        return switch remote.status {
         case .connected: state.isRunning ? "mpv" : "mpv not running"
         case .connecting, .needsPairing: "Connecting…"
         case .unreachable: "Offline"

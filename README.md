@@ -14,28 +14,40 @@ Two parts that talk to each other:
 
 ## Running it
 
-1. mpv must have its IPC socket switched on — `--input-ipc-server=/path` on the
-   command line or `input-ipc-server=/path` in `mpv.conf`. (The `mpv-open`
-   launcher in `~/.config/mpv` already does this with `/tmp/mpv-single.sock`.)
-2. Install the companion as a login item, giving it that same path:
+### On the Mac: an mpv script
 
-   ```bash
-   ./Companion/login-item.sh install /tmp/mpv-single.sock
-   ```
+The companion ships as an mpv script, a folder holding `main.lua` and the
+helper program:
 
-   It starts now and at every login, restarts itself if it ever quits, and
-   waits for mpv to come and go. Rerun the same command after changing the
-   companion's code; `./Companion/login-item.sh uninstall` removes it.
-   Its log is `~/Library/Logs/MPV Remote/companion.log`.
+```bash
+./Companion/package.sh install
+```
 
-   To run it in a terminal instead (stop the login item first, they share a port):
+That builds it and copies it to `~/.config/mpv/scripts/mpv-remote/`. From then
+on it starts whenever mpv starts and quits when mpv does. It switches on mpv's
+IPC socket by itself, or reuses one mpv already has (like the
+`/tmp/mpv-single.sock` of the `mpv-open` launcher), so `mpv.conf` needs no
+changes. When a phone asks to pair, the 4-digit code appears over the video
+and as a notification. Its log is `~/Library/Logs/MPV Remote/companion.log`.
 
-   ```bash
-   swift run --package-path Companion mpv-remote --socket /tmp/mpv-single.sock
-   ```
-3. Run the app from Xcode. It finds the Mac on the network by itself; tap it
-   and enter the 4-digit code, which the Mac shows as a notification (and
-   writes to the log). After that the phone reconnects without asking.
+Options go in `~/.config/mpv/script-opts/mpv-remote.conf`: `port=` and `name=`
+(how the Mac appears on the phone).
+
+`./Companion/package.sh` on its own builds `build/mpv-remote.zip` for others to
+download; the top of that script explains signing and notarizing it.
+
+Other ways to run the companion, one at a time since they share a port:
+
+- In a terminal: `swift run --package-path Companion mpv-remote --socket /tmp/mpvsocket`
+- As a login item that waits for mpv to come and go:
+  `./Companion/login-item.sh install /tmp/mpvsocket` (and `uninstall`)
+
+### On the iPhone
+
+Run the app from Xcode. It finds the Mac on the network by itself; tap it and
+enter the code. After that the phone reconnects without asking. *Try the Demo*
+on the first screen runs a pretend player with no Mac at all — which is also
+how App Review can try the app.
 
 To run the app on a real iPhone, pick your team under *Signing & Capabilities*
 (the bundle identifier is `com.ryudexter.mpvremote`).
@@ -59,7 +71,8 @@ Then, for every build:
 ```
 
 Install the TestFlight app on your iPhone; builds arrive there after Apple
-processes them.
+processes them. Internal testers need no review; inviting people outside your
+team does go through a short Beta App Review.
 
 ### App Store art
 
@@ -74,8 +87,7 @@ swift App/Tools/make-store-art.swift <raw-screenshots-dir> App/MPVRemote/Assets.
 
 The raw screenshots come from the iPhone 18 Pro Max simulator
 (`xcrun simctl io booted screenshot …`), named as in the `shots` list at the
-top of `make-store-art.swift`. Internal testers need no review; inviting people outside your
-team does go through a short Beta App Review.
+top of `make-store-art.swift`.
 
 ## How it fits together
 
@@ -99,7 +111,8 @@ iPhone app  ──WebSocket (Wi-Fi, Bonjour _mpvremote._tcp, port 7655)──▶
 
 - The Wi-Fi connection is not encrypted yet (plain `ws://`). Fine on a home
   network; it should move to TLS before an App Store release.
-- The companion has no interface of its own; a menu bar app showing the
-  connection and the pairing code is the obvious next step.
+- The script package isn't signed or notarized yet, so macOS only runs it on
+  the Mac that built it. Publishing it needs a Developer ID certificate and a
+  notarytool profile (see `Companion/package.sh`).
 - Next/Previous use mpv's stock `playlist-next`/`playlist-prev`, so they skip
   the resume-point and shuffle-history logic that `x`/`z` run in this mpv setup.

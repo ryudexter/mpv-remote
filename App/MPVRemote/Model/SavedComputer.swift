@@ -9,6 +9,8 @@ struct SavedComputer: Codable, Equatable {
         /// changing IP address doesn't matter.
         case bonjour(name: String)
         case host(String, port: UInt16)
+        /// The built-in demo; there's nothing to connect to.
+        case demo
     }
 
     var name: String
@@ -16,12 +18,14 @@ struct SavedComputer: Codable, Equatable {
     /// Issued by the companion when pairing; nil until then.
     var token: String?
 
-    var endpoint: NWEndpoint {
+    var endpoint: NWEndpoint? {
         switch address {
         case .bonjour(let name):
             .service(name: name, type: RemoteService.bonjourType, domain: "local.", interface: nil)
         case .host(let host, let port):
             .hostPort(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port) ?? 7655)
+        case .demo:
+            nil
         }
     }
 
