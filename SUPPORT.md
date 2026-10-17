@@ -21,6 +21,24 @@ needed.
 
 ## Setting up
 
+### New to mpv: install mpv and the script together
+
+**[MPV Player: Tiger Version](https://github.com/ryudexter/mpv-macos-setup)**
+is the mpv setup MPV Player Remote is made with: a ready-to-use mpv for the Mac
+that opens videos with a double-click, and comes with the MPV Remote script
+built in. It needs [Homebrew](https://brew.sh). Paste this into Terminal on
+your Mac:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ryudexter/mpv-macos-setup/main/install.sh | bash
+```
+
+That installs mpv, sets it up, and adds the MPV Remote script. If you already
+have an mpv configuration, it is moved to `~/.config/mpv.backup-<date>` first.
+Then skip to step 3 below.
+
+### Already use mpv: add the script
+
 1. **[Download the MPV Remote script for mpv](https://github.com/ryudexter/mpv-remote/releases/latest/download/mpv-remote.zip)**
    and double-click the zip to unpack it.
 2. Move the `mpv-remote` folder into `~/.config/mpv/scripts/` (in Finder, press

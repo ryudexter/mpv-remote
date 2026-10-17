@@ -16,6 +16,10 @@ Two parts that talk to each other:
 
 ### On the Mac: an mpv script
 
+The quickest start is [MPV Player: Tiger Version](https://github.com/ryudexter/mpv-macos-setup),
+the mpv setup this app is made with: its one-line installer sets up mpv and
+adds this script too.
+
 The companion ships as an mpv script, a folder holding `main.lua` and the
 helper program. The signed, notarized build is on the
 [Releases page](https://github.com/ryudexter/mpv-remote/releases/latest):

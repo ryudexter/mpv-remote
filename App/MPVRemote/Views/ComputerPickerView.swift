@@ -7,6 +7,10 @@ struct ComputerPickerView: View {
     @State private var isEnteringAddress = false
     @State private var address = ""
 
+    /// MPV Player: Tiger Version, whose installer also adds the MPV Remote script.
+    private static let mpvSetupURL = URL(string: "https://github.com/ryudexter/mpv-macos-setup#quick-start")!
+    private static let scriptSetupURL = URL(string: "https://github.com/ryudexter/mpv-remote/blob/main/SUPPORT.md#setting-up")!
+
     var body: some View {
         NavigationStack {
             List {
@@ -33,13 +37,26 @@ struct ComputerPickerView: View {
                 } header: {
                     Text("On This Network")
                 } footer: {
-                    Text("Run the MPV Remote companion on the computer that plays your videos and it will show up here.")
+                    Text("Open a video in mpv on a Mac with the MPV Remote script and it will show up here.")
                 }
 
                 Section {
                     Button("Enter Address Manually", systemImage: "keyboard") {
                         isEnteringAddress = true
                     }
+                }
+
+                Section {
+                    Link(destination: Self.mpvSetupURL) {
+                        Label("Get mpv for Mac", systemImage: "arrow.down.circle")
+                    }
+                    Link(destination: Self.scriptSetupURL) {
+                        Label("Add the Script to Your mpv", systemImage: "puzzlepiece.extension")
+                    }
+                } header: {
+                    Text("Set Up Your Mac")
+                } footer: {
+                    Text("MPV Player: Tiger Version is the mpv setup this app is made with, and it comes with the MPV Remote script built in. One line in Terminal on your Mac installs both. Already use mpv? Just add the script.")
                 }
 
                 Section {
@@ -64,7 +81,7 @@ struct ComputerPickerView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("The IP address or name of the computer running the companion.")
+                Text("The IP address or name of the Mac running mpv with the MPV Remote script.")
             }
         }
         .onAppear { browser.start() }
