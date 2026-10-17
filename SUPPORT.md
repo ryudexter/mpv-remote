@@ -21,12 +21,12 @@ needed.
 
 ## Setting up
 
-1. Get the MPV Remote script for mpv (the download is coming soon to this
-   repository's Releases page; until then, build it with
-   `./Companion/package.sh` as described in the [README](README.md#running-it)).
-2. Move the `mpv-remote` folder into `~/.config/mpv/scripts/`. That's all on
-   the Mac: it starts by itself whenever mpv does, and needs no changes to
-   `mpv.conf`.
+1. **[Download the MPV Remote script for mpv](https://github.com/ryudexter/mpv-remote/releases/latest/download/mpv-remote.zip)**
+   and double-click the zip to unpack it.
+2. Move the `mpv-remote` folder into `~/.config/mpv/scripts/` (in Finder, press
+   *Shift-Command-G* and type `~/.config/mpv/scripts`; create the `scripts`
+   folder if it isn't there). That's all on the Mac: it starts by itself
+   whenever mpv does, and needs no changes to `mpv.conf`.
 3. Open a video in mpv. Then open MPV Player Remote on your iPhone, allow it to
    find devices on your local network, and tap your Mac.
 4. Enter the 4-digit code that appears over the video in mpv.

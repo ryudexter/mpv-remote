@@ -17,7 +17,11 @@ Two parts that talk to each other:
 ### On the Mac: an mpv script
 
 The companion ships as an mpv script, a folder holding `main.lua` and the
-helper program:
+helper program. The signed, notarized build is on the
+[Releases page](https://github.com/ryudexter/mpv-remote/releases/latest):
+[download `mpv-remote.zip`](https://github.com/ryudexter/mpv-remote/releases/latest/download/mpv-remote.zip),
+unzip it and move the `mpv-remote` folder into `~/.config/mpv/scripts/`. To
+build and install it from source instead:
 
 ```bash
 ./Companion/package.sh install
@@ -34,7 +38,9 @@ Options go in `~/.config/mpv/script-opts/mpv-remote.conf`: `port=` and `name=`
 (how the Mac appears on the phone).
 
 `./Companion/package.sh` on its own builds `build/mpv-remote.zip` for others to
-download; the top of that script explains signing and notarizing it.
+download, signed and notarized when a Developer ID certificate and the
+`mpv-remote` notarytool profile exist (`Companion/save-notary-login.sh` saves
+that profile from an App Store Connect API key).
 
 Other ways to run the companion, one at a time since they share a port:
 
@@ -111,8 +117,5 @@ iPhone app  ──WebSocket (Wi-Fi, Bonjour _mpvremote._tcp, port 7655)──▶
 
 - The Wi-Fi connection is not encrypted yet (plain `ws://`). Fine on a home
   network; it should move to TLS before an App Store release.
-- The script package isn't signed or notarized yet, so macOS only runs it on
-  the Mac that built it. Publishing it needs a Developer ID certificate and a
-  notarytool profile (see `Companion/package.sh`).
 - Next/Previous use mpv's stock `playlist-next`/`playlist-prev`, so they skip
   the resume-point and shuffle-history logic that `x`/`z` run in this mpv setup.
