@@ -17,7 +17,9 @@ struct NowPlayingView: View {
                     Backdrop(seed: state.isRunning ? state.title : nil)
                 }
                 .sheet(isPresented: $isShowingQueue) {
+                    // See RootView: sheets on a Mac don't inherit it.
                     QueueView()
+                        .environment(remote)
                 }
         }
     }
