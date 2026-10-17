@@ -109,7 +109,8 @@ struct NowPlayingView: View {
                         remote.forgetComputer()
                     }
                 } else {
-                    Button("Forget This Computer", systemImage: "xmark.circle", role: .destructive) {
+                    // Not "Forget": the pairing is kept, so coming back needs no code.
+                    Button("Change Computer", systemImage: "arrow.left.arrow.right") {
                         remote.forgetComputer()
                     }
                 }

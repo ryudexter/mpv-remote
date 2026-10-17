@@ -49,6 +49,10 @@ struct SavedComputer: Codable, Equatable {
     }
 
     private static let defaultsKey = "savedComputer"
+    /// Every token this phone has been given, by computer name. Kept apart from
+    /// the chosen computer, so choosing a computer again, or switching between
+    /// two, never asks for a new code.
+    private static let tokensKey = "pairingTokens"
 
     static func load() -> SavedComputer? {
         UserDefaults.standard.data(forKey: defaultsKey).flatMap { try? JSONDecoder().decode(SavedComputer.self, from: $0) }
@@ -56,9 +60,28 @@ struct SavedComputer: Codable, Equatable {
 
     func save() {
         UserDefaults.standard.set(try? JSONEncoder().encode(self), forKey: Self.defaultsKey)
+        if let token { Self.tokens[name] = token }
     }
 
+    /// Stops using this computer. Its token is kept, for if it's chosen again.
     static func forget() {
+        // Installs from before tokens were kept apart only have it here.
+        if let saved = load(), let token = saved.token { tokens[saved.name] = token }
         UserDefaults.standard.removeObject(forKey: defaultsKey)
+    }
+
+    /// The token from an earlier pairing with the computer called `name`.
+    static func token(for name: String) -> String? {
+        tokens[name]
+    }
+
+    /// Drops a token the computer no longer accepts.
+    static func forgetToken(for name: String) {
+        tokens[name] = nil
+    }
+
+    private static var tokens: [String: String] {
+        get { UserDefaults.standard.dictionary(forKey: tokensKey) as? [String: String] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: tokensKey) }
     }
 }

@@ -208,7 +208,9 @@ struct OptionsBar: View {
         } label: {
             optionLabel("Audio", systemImage: "waveform")
         }
-        .disabled(state.audioTracks.count < 2)
+        // With a single track there's nothing to switch to, but the menu still
+        // shows which track is playing; a greyed-out button just looks broken.
+        .disabled(state.audioTracks.isEmpty)
     }
 
     private func speedMenu(_ state: PlayerState) -> some View {

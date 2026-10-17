@@ -49,6 +49,9 @@ final class RemoteController {
     // MARK: Choosing a computer
 
     func choose(_ computer: SavedComputer) {
+        var computer = computer
+        // Paired with it before? Then there's no code to enter.
+        computer.token = computer.token ?? SavedComputer.token(for: computer.name)
         self.computer = computer
         computer.save()
         connect()
@@ -102,6 +105,9 @@ final class RemoteController {
             demo.perform(command)
             return
         }
+        // Sent before the companion has accepted the token, a command gets
+        // "pairing required" back, which would throw a good token away.
+        guard status == .connected else { return }
         applyOptimistically(command)
         send(.command(command))
     }
@@ -240,6 +246,8 @@ final class RemoteController {
                 computer?.save()
             }
         case .pairingRequired:
+            // The companion doesn't know this phone, or no longer does.
+            if let name = computer?.name { SavedComputer.forgetToken(for: name) }
             computer?.token = nil
             status = .needsPairing
         case .paired(let token):
