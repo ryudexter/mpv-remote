@@ -11,6 +11,8 @@ struct NowPlayingView: View {
     var body: some View {
         NavigationStack {
             content
+                // Fade between connecting, offline and playing rather than cut.
+                .animation(.smooth(duration: 0.4), value: remote.status)
                 .toolbar { toolbar }
                 .navigationBarTitleDisplayMode(.inline)
                 .background {
@@ -37,7 +39,7 @@ struct NowPlayingView: View {
                     .buttonStyle(.glass)
             }
         case .connecting where !state.isRunning, .needsPairing:
-            ProgressView("Connecting to \(computerName)…")
+            ConnectingView(computerName: computerName)
         default:
             if state.isRunning && !state.isIdle {
                 player
