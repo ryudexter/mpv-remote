@@ -21,6 +21,8 @@ final class RemoteController {
     private(set) var state = PlayerState()
     /// Set when the last pairing code was wrong, cleared on the next attempt.
     private(set) var pairingFailed = false
+    /// The frame mpv is showing, from companions that send one.
+    private(set) var thumbnail: UIImage?
 
     /// Set while the built-in demo stands in for a real computer.
     private var demo: DemoPlayer?
@@ -76,6 +78,7 @@ final class RemoteController {
         computer = nil
         status = .connecting
         state = PlayerState()
+        thumbnail = nil
         pairingFailed = false
     }
 
@@ -213,6 +216,7 @@ final class RemoteController {
         if status != .needsPairing { status = .unreachable }
         // Whatever was playing may have stopped since; don't keep showing it.
         state = PlayerState()
+        thumbnail = nil
         guard isActive else { return }
         retryTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
@@ -257,6 +261,8 @@ final class RemoteController {
             pairingFailed = true
         case .state(let newState):
             receive(newState)
+        case .thumbnail(let jpeg):
+            thumbnail = jpeg.flatMap(UIImage.init(data:))
         }
     }
 

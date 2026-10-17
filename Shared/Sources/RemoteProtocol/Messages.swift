@@ -28,6 +28,10 @@ public enum ServerMessage: Codable, Sendable {
     case paired(token: String)
     case pairingFailed
     case state(PlayerState)
+    /// A small JPEG of the frame mpv is showing, or nil once there's none to
+    /// show. Companions from before this never send it, and apps from before
+    /// it fail to decode it and skip it, so neither needs the other updated.
+    case thumbnail(jpeg: Data?)
 }
 
 /// Everything the phone may ask mpv to do. The companion maps each case to a

@@ -53,8 +53,14 @@ signal(SIGPIPE, SIG_IGN)
 let pairing = PairingStore()
 let server = RemoteServer(computerName: computerName, port: port, pairing: pairing)
 let mpv = MPVConnection(socketPath: socketPath, exitsWithMPV: exitsWithMPV)
-mpv.onChange = { state, positionOnly in server.update(state, positionOnly: positionOnly) }
+let thumbnails = Thumbnailer(mpv: mpv, server: server)
+mpv.onChange = { state, positionOnly in
+    server.update(state, positionOnly: positionOnly)
+    if !positionOnly { thumbnails.stateChanged(state) }
+}
+mpv.onEvent = { event in thumbnails.handle(event: event) }
 server.onCommand = { command in mpv.perform(command) }
+server.onPhoneConnected = { thumbnails.phoneConnected() }
 // The code also appears over the video, where whoever is pairing is already looking.
 pairing.onAnnounce = { code in mpv.showText("MPV Remote pairing code: \(code)", seconds: 20) }
 

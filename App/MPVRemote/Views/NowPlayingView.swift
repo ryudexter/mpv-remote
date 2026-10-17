@@ -60,7 +60,7 @@ struct NowPlayingView: View {
     private var player: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 8)
-            Artwork(seed: state.title)
+            Artwork(seed: state.title, frame: remote.thumbnail)
                 .scaleEffect(state.isPaused ? 0.9 : 1)
                 .animation(.spring(duration: 0.5, bounce: 0.3), value: state.isPaused)
             Spacer(minLength: 28)
@@ -153,19 +153,32 @@ struct NowPlayingView: View {
 /// the same title always gets the same one.
 struct Artwork: View {
     var seed: String?
+    /// The frame mpv is showing, which replaces the gradient when there is one.
+    var frame: UIImage?
 
     var body: some View {
         let palette = Palette(seed: seed)
         RoundedRectangle(cornerRadius: 26, style: .continuous)
             .fill(LinearGradient(colors: [palette.light, palette.dark], startPoint: .topLeading, endPoint: .bottomTrailing))
             .overlay {
-                Image(systemName: "film")
-                    .font(.system(size: 52, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
+                if let frame {
+                    Image(uiImage: frame)
+                        .resizable()
+                        .scaledToFill()
+                        // A new identity for each frame, so they crossfade.
+                        .id(ObjectIdentifier(frame))
+                        .transition(.opacity)
+                } else {
+                    Image(systemName: "film")
+                        .font(.system(size: 52, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
             }
+            .clipShape(.rect(cornerRadius: 26, style: .continuous))
             .aspectRatio(16 / 9, contentMode: .fit)
             .shadow(color: palette.dark.opacity(0.5), radius: 30, y: 14)
             .animation(.smooth(duration: 0.6), value: seed)
+            .animation(.smooth(duration: 0.6), value: frame)
     }
 }
 

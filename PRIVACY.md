@@ -18,8 +18,9 @@ MPV Player Remote does not collect, store or share any personal data.
   phone's name. Both stay on those devices. Remove the iPhone's copy by
   deleting the app; the Mac's copy is in
   `~/Library/Application Support/MPV Remote/paired-devices.json`.
-- **Playback information.** What mpv is playing (titles, tracks, playlist)
-  travels only between your Mac and your iPhone, to show it in the app.
+- **Playback information.** What mpv is playing (titles, tracks, playlist,
+  and a small still of the frame on screen) travels only between your Mac and
+  your iPhone, to show it in the app. The still isn't kept anywhere.
 
 ## Local network permission
 
