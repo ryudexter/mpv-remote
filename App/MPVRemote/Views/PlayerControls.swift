@@ -182,7 +182,7 @@ struct OptionsBar: View {
                 }
             }
             if state.subtitleTracks.contains(where: \.isSelected) {
-                Section("Timing: \(state.subtitleDelay.formatted(.number.precision(.fractionLength(1)))) s") {
+                Section("Timing: \(formatDelay(state.subtitleDelay)) s") {
                     Button("Show Earlier", systemImage: "minus") { remote.send(.adjustSubtitleDelay(by: -0.1)) }
                         .menuActionDismissBehavior(.disabled)
                     Button("Show Later", systemImage: "plus") { remote.send(.adjustSubtitleDelay(by: 0.1)) }

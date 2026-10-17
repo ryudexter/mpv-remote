@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Asks for the 4-digit code the companion printed.
+/// Asks for the 4-digit code the companion shows over the video in mpv.
 struct PairingView: View {
     @Environment(RemoteController.self) private var remote
     @State private var code = ""
@@ -20,7 +20,7 @@ struct PairingView: View {
                 VStack(spacing: 8) {
                     Text("Enter Pairing Code")
                         .font(.title2.bold())
-                    Text("Type the code shown by the MPV Remote companion on \(remote.computer?.name ?? "your computer").")
+                    Text("Type the code that appears over the video in mpv on \(remote.computer?.name ?? "your computer").")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                 }

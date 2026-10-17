@@ -31,7 +31,7 @@ struct NowPlayingView: View {
             ContentUnavailableView {
                 Label("Can't Reach \(computerName)", systemImage: "wifi.exclamationmark")
             } description: {
-                Text("Make sure the companion is running and your iPhone is on the same Wi-Fi.")
+                Text("Open a video in mpv on \(computerName), and make sure your iPhone is on the same Wi-Fi. It reconnects by itself.")
             } actions: {
                 Button("Try Again") { remote.connect() }
                     .buttonStyle(.glass)

@@ -33,6 +33,13 @@ func formatTime(_ seconds: Double) -> String {
         : String(format: "%d:%02d", minutes, secs)
 }
 
+/// "0.0", "0.3", "-1.2". mpv adds up 0.1 s steps in binary floating point, so
+/// stepping back to zero can leave -0.00000000000000003, which would show as "-0.0".
+func formatDelay(_ seconds: Double) -> String {
+    // Adding zero turns the -0.0 that rounding leaves into 0.0.
+    ((seconds * 10).rounded() / 10 + 0).formatted(.number.precision(.fractionLength(1)))
+}
+
 /// "1×", "1.5×", "0.75×".
 func formatSpeed(_ speed: Double) -> String {
     speed.formatted(.number.precision(.fractionLength(0...2))) + "×"
