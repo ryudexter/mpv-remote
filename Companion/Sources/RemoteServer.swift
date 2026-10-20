@@ -6,6 +6,11 @@ import RemoteProtocol
 @MainActor
 final class RemoteServer {
     var onCommand: ((PlayerCommand) -> Void)?
+    /// Called whenever a phone is let in, so it can be brought up to date.
+    var onPhoneConnected: (() -> Void)?
+
+    /// Whether any paired phone is connected right now.
+    var hasPhones: Bool { sessions.values.contains(where: \.isAuthorized) }
 
     private let computerName: String
     private let port: NWEndpoint.Port
@@ -14,6 +19,7 @@ final class RemoteServer {
     private var sessions: [ObjectIdentifier: ClientSession] = [:]
 
     private var latestState = PlayerState()
+    private(set) var latestThumbnail: Data?
     private var sentState = PlayerState()
     private var sentAt = Date.distantPast
     private var sendScheduled = false
@@ -64,6 +70,15 @@ final class RemoteServer {
         Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(30))
             self?.broadcastLatest()
+        }
+    }
+
+    /// Sends a new frame, or nil to clear it, to every paired phone.
+    func updateThumbnail(_ jpeg: Data?) {
+        guard jpeg != latestThumbnail else { return }
+        latestThumbnail = jpeg
+        for session in sessions.values where session.isAuthorized {
+            session.send(.thumbnail(jpeg: jpeg))
         }
     }
 
@@ -127,7 +142,9 @@ final class RemoteServer {
         session.deviceName = deviceName
         session.send(.welcome(computerName: computerName))
         session.send(.state(latestState))
+        if let latestThumbnail { session.send(.thumbnail(jpeg: latestThumbnail)) }
         log("\(deviceName) connected")
+        onPhoneConnected?()
     }
 }
 

@@ -103,9 +103,15 @@ struct TransportControls: View {
 
 struct VolumeControl: View {
     @Environment(RemoteController.self) private var remote
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.scenePhase) private var scenePhase
     /// While the slider is held, it shows this rather than what mpv reports,
     /// so echoes of earlier values can't make it jump under your finger.
     @State private var draft: Double?
+    /// What the last press of the iPhone's volume buttons asked for. Just after
+    /// one, the next steps from this, as what mpv reports may still be an echo
+    /// of an earlier press.
+    @State private var lastPress: (volume: Double, date: Date)?
 
     var body: some View {
         let state = remote.state
@@ -144,6 +150,26 @@ struct VolumeControl: View {
         .buttonStyle(.plain)
         .font(.footnote)
         .foregroundStyle(.secondary)
+        // Only while on screen: elsewhere, and in Control Center, they're the phone's again.
+        .onVolumeButtons(isEnabled: isEnabled && scenePhase == .active, perform: pressed)
+    }
+
+    /// Moves to the next multiple of 5 up or down, within the slider's range.
+    private func pressed(_ button: VolumeButton) {
+        let state = remote.state
+        let step = 5.0
+        var current = state.volume
+        if let lastPress, lastPress.date.timeIntervalSinceNow > -1 {
+            current = lastPress.volume
+        }
+        let next = switch button {
+        case .up: ((current / step).rounded(.down) + 1) * step
+        case .down: ((current / step).rounded(.up) - 1) * step
+        }
+        let volume = min(max(next, 0), max(state.maxVolume, 100))
+        guard volume != current else { return }
+        lastPress = (volume, .now)
+        remote.send(.setVolume(volume))
     }
 }
 
@@ -182,7 +208,7 @@ struct OptionsBar: View {
                 }
             }
             if state.subtitleTracks.contains(where: \.isSelected) {
-                Section("Timing: \(state.subtitleDelay.formatted(.number.precision(.fractionLength(1)))) s") {
+                Section("Timing: \(formatDelay(state.subtitleDelay)) s") {
                     Button("Show Earlier", systemImage: "minus") { remote.send(.adjustSubtitleDelay(by: -0.1)) }
                         .menuActionDismissBehavior(.disabled)
                     Button("Show Later", systemImage: "plus") { remote.send(.adjustSubtitleDelay(by: 0.1)) }
@@ -208,7 +234,9 @@ struct OptionsBar: View {
         } label: {
             optionLabel("Audio", systemImage: "waveform")
         }
-        .disabled(state.audioTracks.count < 2)
+        // With a single track there's nothing to switch to, but the menu still
+        // shows which track is playing; a greyed-out button just looks broken.
+        .disabled(state.audioTracks.isEmpty)
     }
 
     private func speedMenu(_ state: PlayerState) -> some View {

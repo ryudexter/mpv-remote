@@ -21,6 +21,8 @@ final class RemoteController {
     private(set) var state = PlayerState()
     /// Set when the last pairing code was wrong, cleared on the next attempt.
     private(set) var pairingFailed = false
+    /// The frame mpv is showing, from companions that send one.
+    private(set) var thumbnail: UIImage?
 
     /// Set while the built-in demo stands in for a real computer.
     private var demo: DemoPlayer?
@@ -30,6 +32,7 @@ final class RemoteController {
     private var stateReceivedAt = Date.now
     private var connection: NWConnection?
     private var retryTask: Task<Void, Never>?
+    private var timeoutTask: Task<Void, Never>?
     private var isActive = true
 
     init() {
@@ -48,6 +51,9 @@ final class RemoteController {
     // MARK: Choosing a computer
 
     func choose(_ computer: SavedComputer) {
+        var computer = computer
+        // Paired with it before? Then there's no code to enter.
+        computer.token = computer.token ?? SavedComputer.token(for: computer.name)
         self.computer = computer
         computer.save()
         connect()
@@ -72,6 +78,7 @@ final class RemoteController {
         computer = nil
         status = .connecting
         state = PlayerState()
+        thumbnail = nil
         pairingFailed = false
     }
 
@@ -101,6 +108,9 @@ final class RemoteController {
             demo.perform(command)
             return
         }
+        // Sent before the companion has accepted the token, a command gets
+        // "pairing required" back, which would throw a good token away.
+        guard status == .connected else { return }
         applyOptimistically(command)
         send(.command(command))
     }
@@ -147,9 +157,16 @@ final class RemoteController {
     // MARK: Connection
 
     func connect() {
+        guard computer?.endpoint != nil else { return }
+        if status != .needsPairing { status = .connecting }
+        openConnection()
+    }
+
+    /// Like `connect()`, but leaves `status` alone, so retrying after a lost
+    /// connection keeps saying so instead of flicking back to "Connecting…".
+    private func openConnection() {
         guard let computer, let endpoint = computer.endpoint else { return }
         disconnect()
-        if status != .needsPairing { status = .connecting }
 
         let parameters = NWParameters.tcp
         let websocket = NWProtocolWebSocket.Options()
@@ -163,11 +180,21 @@ final class RemoteController {
         self.connection = connection
         connection.start(queue: .main)
         receive(on: connection)
+
+        // A Bonjour name that has gone away, as it does whenever mpv quits,
+        // doesn't fail the connection: it just waits for the name to come back.
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled, let self, connection === self.connection, connection.state != .ready else { return }
+            self.connectionLost()
+        }
     }
 
     private func disconnect() {
         retryTask?.cancel()
         retryTask = nil
+        timeoutTask?.cancel()
+        timeoutTask = nil
         connection?.cancel()
         connection = nil
     }
@@ -187,11 +214,14 @@ final class RemoteController {
     private func connectionLost() {
         disconnect()
         if status != .needsPairing { status = .unreachable }
+        // Whatever was playing may have stopped since; don't keep showing it.
+        state = PlayerState()
+        thumbnail = nil
         guard isActive else { return }
         retryTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
-            self?.connect()
+            self?.openConnection()
         }
     }
 
@@ -220,6 +250,8 @@ final class RemoteController {
                 computer?.save()
             }
         case .pairingRequired:
+            // The companion doesn't know this phone, or no longer does.
+            if let name = computer?.name { SavedComputer.forgetToken(for: name) }
             computer?.token = nil
             status = .needsPairing
         case .paired(let token):
@@ -229,6 +261,8 @@ final class RemoteController {
             pairingFailed = true
         case .state(let newState):
             receive(newState)
+        case .thumbnail(let jpeg):
+            thumbnail = jpeg.flatMap(UIImage.init(data:))
         }
     }
 

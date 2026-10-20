@@ -14,7 +14,10 @@ struct RootView: View {
         }
         .animation(.smooth, value: remote.computer?.token != nil)
         .sheet(isPresented: .constant(remote.status == .needsPairing)) {
+            // Passed in again because a sheet on a Mac running the iPhone app
+            // doesn't inherit it, and reading it there crashes.
             PairingView()
+                .environment(remote)
         }
         .onChange(of: scenePhase) { _, phase in
             remote.setActive(phase != .background)

@@ -10,6 +10,8 @@ final class MPVConnection {
     /// Called on every change. `positionOnly` is true when only `time-pos`
     /// moved, which during playback is many times a second.
     var onChange: ((PlayerState, _ positionOnly: Bool) -> Void)?
+    /// Called with the name of each mpv event, such as "playback-restart".
+    var onEvent: ((String) -> Void)?
     private(set) var state = PlayerState()
 
     private let socketPath: String
@@ -18,6 +20,9 @@ final class MPVConnection {
     private var readSource: DispatchSourceRead?
     private var buffer = Data()
     private var failedAttempts = 0
+    /// Commands waiting for mpv's reply, by request id.
+    private var pendingReplies: [Int: (Bool) -> Void] = [:]
+    private var lastRequestID = 0
 
     private static let observedProperties = [
         "pause", "time-pos", "duration", "media-title", "volume", "volume-max", "mute",
@@ -37,6 +42,16 @@ final class MPVConnection {
     /// Shows a message on mpv's own screen for `seconds`.
     func showText(_ text: String, seconds: Int) {
         send(["show-text", text, seconds * 1000])
+    }
+
+    /// Saves the frame on screen, without subtitles or anything else drawn
+    /// over it, then reports whether that worked. It doesn't while mpv's
+    /// window is minimized, since mpv stops drawing it.
+    func saveFrame(to url: URL, completion: @escaping (Bool) -> Void) {
+        guard socket >= 0 else { return completion(false) }
+        lastRequestID += 1
+        pendingReplies[lastRequestID] = completion
+        send(["screenshot-to-file", url.path, "video"], requestID: lastRequestID)
     }
 
     // MARK: Commands
@@ -99,6 +114,9 @@ final class MPVConnection {
         readSource = nil
         socket = -1
         buffer.removeAll()
+        let unanswered = pendingReplies.values
+        pendingReplies.removeAll()
+        unanswered.forEach { $0(false) }
         if exitsWithMPV {
             log("mpv quit; quitting too")
             exit(0)
@@ -116,9 +134,11 @@ final class MPVConnection {
         }
     }
 
-    private func send(_ command: [Any]) {
+    private func send(_ command: [Any], requestID: Int? = nil) {
+        var message: [String: Any] = ["command": command]
+        if let requestID { message["request_id"] = requestID }
         guard socket >= 0,
-              var data = try? JSONSerialization.data(withJSONObject: ["command": command])
+              var data = try? JSONSerialization.data(withJSONObject: message)
         else { return }
         data.append(0x0A)
         data.withUnsafeBytes { bytes in
@@ -154,6 +174,10 @@ final class MPVConnection {
         guard let message = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { return }
         if message["event"] as? String == "property-change", let name = message["name"] as? String {
             apply(property: name, value: message["data"])
+        } else if let event = message["event"] as? String {
+            onEvent?(event)
+        } else if let id = message["request_id"] as? Int, let completion = pendingReplies.removeValue(forKey: id) {
+            completion(message["error"] as? String == "success")
         } else if let error = message["error"] as? String, error != "success" {
             log("mpv rejected a command: \(error)")
         }
