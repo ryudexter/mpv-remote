@@ -13,7 +13,8 @@ versions if you can.
 ## What you need
 
 - An iPhone with iOS 26 or later
-- A Mac (macOS 14 or later) with mpv and the MPV Remote script
+- A Mac with MPV Player Tiger Version (macOS 15 or later), or with mpv and the
+  free MPV Remote script (macOS 14 or later)
 - Both on the same Wi-Fi network
 
 Just want to look around first? Tap **Try the Demo** in the app — no Mac
@@ -21,23 +22,19 @@ needed.
 
 ## Setting up
 
-### New to mpv: install mpv and the script together
+### Easiest: MPV Player Tiger Version
 
-**[MPV Player: Tiger Version](https://github.com/ryudexter/mpv-macos-setup)**
-is the mpv setup MPV Player Remote is made with: a ready-to-use mpv for the Mac
-that opens videos with a double-click, and comes with the MPV Remote script
-built in. It needs [Homebrew](https://brew.sh). Paste this into Terminal on
-your Mac:
+**[MPV Player Tiger Version](https://github.com/ryudexter/mpv-macos-setup)**,
+coming to the Mac App Store, is the player MPV Player Remote is made with: mpv,
+ready to use on the Mac, with the MPV Remote script built in. Install it, open
+a video, then skip to step 3 below.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/ryudexter/mpv-macos-setup/main/install.sh | bash
-```
+### Free: mpv with the MPV Remote script
 
-That installs mpv, sets it up, and adds the MPV Remote script. If you already
-have an mpv configuration, it is moved to `~/.config/mpv.backup-<date>` first.
-Then skip to step 3 below.
-
-### Already use mpv: add the script
+MPV Player Remote works with plain mpv too, and both are free. mpv itself is on
+[GitHub](https://github.com/mpv-player/mpv/releases/latest) and
+[mpv.io](https://mpv.io/installation/) (or `brew install mpv` with
+[Homebrew](https://brew.sh)). Already use mpv? Start here:
 
 1. **[Download the MPV Remote script for mpv](https://github.com/ryudexter/mpv-remote/releases/latest/download/mpv-remote.zip)**
    and double-click the zip to unpack it.

@@ -7,8 +7,8 @@ struct ComputerPickerView: View {
     @State private var isEnteringAddress = false
     @State private var address = ""
 
-    /// MPV Player: Tiger Version, whose installer also adds the MPV Remote script.
-    private static let mpvSetupURL = URL(string: "https://github.com/ryudexter/mpv-macos-setup#quick-start")!
+    /// MPV Player Tiger Version on the Mac App Store, which has the MPV Remote script built in.
+    private static let tigerURL = URL(string: "https://apps.apple.com/app/id6827468493")!
     private static let scriptSetupURL = URL(string: "https://github.com/ryudexter/mpv-remote/blob/main/SUPPORT.md#setting-up")!
 
     var body: some View {
@@ -47,8 +47,8 @@ struct ComputerPickerView: View {
                 }
 
                 Section {
-                    Link(destination: Self.mpvSetupURL) {
-                        Label("Get mpv for Mac", systemImage: "arrow.down.circle")
+                    Link(destination: Self.tigerURL) {
+                        Label("Get MPV Player Tiger Version", systemImage: "arrow.down.circle")
                     }
                     Link(destination: Self.scriptSetupURL) {
                         Label("Add the Script to Your mpv", systemImage: "puzzlepiece.extension")
@@ -56,7 +56,7 @@ struct ComputerPickerView: View {
                 } header: {
                     Text("Set Up Your Mac")
                 } footer: {
-                    Text("MPV Player: Tiger Version is the mpv setup this app is made with, and it comes with the MPV Remote script built in. One line in Terminal on your Mac installs both. Already use mpv? Just add the script.")
+                    Text("MPV Player Tiger Version, on the Mac App Store, is the player this app is made with, and it has the MPV Remote script built in. Already use mpv, or want it free from GitHub? Just add the free script.")
                 }
 
                 Section {

@@ -16,9 +16,9 @@ Two parts that talk to each other:
 
 ### On the Mac: an mpv script
 
-The quickest start is [MPV Player: Tiger Version](https://github.com/ryudexter/mpv-macos-setup),
-the mpv setup this app is made with: its one-line installer sets up mpv and
-adds this script too.
+The quickest start is [MPV Player Tiger Version](https://github.com/ryudexter/mpv-macos-setup),
+the Mac player this app is made with, coming to the Mac App Store with this
+script built in. Any other mpv works too, with the script below.
 
 The companion ships as an mpv script, a folder holding `main.lua` and the
 helper program. The signed, notarized build is on the
@@ -88,10 +88,12 @@ team does go through a short Beta App Review.
 
 `AppStore/` holds the product-page header and the iPhone screenshots, in the
 large (1320×2868) and medium (1179×2556) sizes.
-Both are generated, as is the app icon:
+Both are generated, as is the app icon. `make-icon.swift` draws MPV Player
+Tiger Version's Mac icon too (`laptop` instead of `remote`), so the two apps
+keep matching icons:
 
 ```bash
-swift App/Tools/make-icon.swift App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+swift App/Tools/make-icon.swift remote App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 swift App/Tools/make-store-art.swift <raw-screenshots-dir> App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png AppStore
 ```
 
