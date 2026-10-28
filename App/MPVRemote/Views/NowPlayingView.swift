@@ -61,6 +61,7 @@ struct NowPlayingView: View {
         VStack(spacing: 0) {
             Spacer(minLength: 8)
             Artwork(seed: state.title, frame: remote.thumbnail)
+                .overlay { DoubleTapToSkip() }
                 .scaleEffect(state.isPaused ? 0.9 : 1)
                 .animation(.spring(duration: 0.5, bounce: 0.3), value: state.isPaused)
             Spacer(minLength: 28)
@@ -179,6 +180,75 @@ struct Artwork: View {
             .shadow(color: palette.dark.opacity(0.5), radius: 30, y: 14)
             .animation(.smooth(duration: 0.6), value: seed)
             .animation(.smooth(duration: 0.6), value: frame)
+    }
+}
+
+/// Double-tapping the left or right half of the picture skips back or forward
+/// 10 seconds, as in video apps. Double-tapping again soon after adds another
+/// 10, and a badge on that side counts up how far it has gone.
+struct DoubleTapToSkip: View {
+    private static let step = 10.0
+
+    @Environment(RemoteController.self) private var remote
+    /// How far the double-taps in a row have skipped, negative going back.
+    /// Nil once the badge has faded.
+    @State private var total: Double?
+    @State private var taps = 0
+    @State private var fade: Task<Void, Never>?
+
+    var body: some View {
+        HStack(spacing: 0) {
+            side(direction: -1)
+            side(direction: 1)
+        }
+        .sensoryFeedback(.impact(weight: .light), trigger: taps)
+        // The buttons below do the same for VoiceOver, where a double-tap activates.
+        .accessibilityHidden(true)
+    }
+
+    private func side(direction: Double) -> some View {
+        Color.clear
+            .contentShape(.rect)
+            .overlay {
+                if let total, total.sign == direction.sign {
+                    badge(total)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            .onTapGesture(count: 2) { skip(by: direction * Self.step) }
+    }
+
+    private func badge(_ seconds: Double) -> some View {
+        HStack(spacing: 6) {
+            if seconds < 0 { Image(systemName: "backward.fill") }
+            Text("\(Int(abs(seconds))) s")
+                .contentTransition(.numericText(value: seconds))
+            if seconds > 0 { Image(systemName: "forward.fill") }
+        }
+        .font(.subheadline.weight(.semibold).monospacedDigit())
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .glassEffect(.regular, in: .capsule)
+    }
+
+    private func skip(by seconds: Double) {
+        taps += 1
+        remote.send(.skip(by: seconds))
+        withAnimation(.snappy) {
+            // Turning round starts the count again.
+            if let total, total.sign == seconds.sign {
+                self.total = total + seconds
+            } else {
+                total = seconds
+            }
+        }
+        fade?.cancel()
+        fade = Task {
+            try? await Task.sleep(for: .seconds(0.9))
+            guard !Task.isCancelled else { return }
+            withAnimation(.smooth) { total = nil }
+        }
     }
 }
 

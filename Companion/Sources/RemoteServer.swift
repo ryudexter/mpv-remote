@@ -8,6 +8,9 @@ final class RemoteServer {
     var onCommand: ((PlayerCommand) -> Void)?
     /// Called whenever a phone is let in, so it can be brought up to date.
     var onPhoneConnected: (() -> Void)?
+    /// Called if the listener stops for good, as when another program already
+    /// has the port (`.posix(.EADDRINUSE)`). Nothing is served after that.
+    var onFailure: ((NWError) -> Void)?
 
     /// Whether any paired phone is connected right now.
     var hasPhones: Bool { sessions.values.contains(where: \.isAuthorized) }
@@ -38,14 +41,10 @@ final class RemoteServer {
 
         let listener = try NWListener(using: parameters, on: port)
         listener.service = NWListener.Service(name: computerName, type: RemoteService.bonjourType)
-        listener.stateUpdateHandler = { [port] state in
+        listener.stateUpdateHandler = { [weak self, port] state in
             switch state {
             case .ready: log("Listening on port \(port), advertised over Bonjour")
-            case .failed(.posix(.EADDRINUSE)):
-                // Most likely a second mpv window: the first one's helper already serves the phone.
-                log("Port \(port) is already in use, probably by another MPV Remote companion; quitting")
-                exit(0)
-            case .failed(let error): log("Listener failed: \(error)"); exit(1)
+            case .failed(let error): MainActor.assumeIsolated { self?.fail(error) }
             default: break
             }
         }
@@ -54,6 +53,12 @@ final class RemoteServer {
         }
         listener.start(queue: .main)
         self.listener = listener
+    }
+
+    private func fail(_ error: NWError) {
+        listener?.cancel()
+        listener = nil
+        onFailure?(error)
     }
 
     /// Takes the latest player state and pushes it to paired phones, coalescing
