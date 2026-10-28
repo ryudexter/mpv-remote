@@ -61,6 +61,15 @@ mpv.onChange = { state, positionOnly in
 mpv.onEvent = { event in thumbnails.handle(event: event) }
 server.onCommand = { command in mpv.perform(command) }
 server.onPhoneConnected = { thumbnails.phoneConnected() }
+server.onFailure = { error in
+    if case .posix(.EADDRINUSE) = error {
+        // Most likely a second mpv window: the first one's helper already serves the phone.
+        log("Port \(port) is already in use, probably by another MPV Remote companion; quitting")
+        exit(0)
+    }
+    log("Listener failed: \(error)")
+    exit(1)
+}
 // The code also appears over the video, where whoever is pairing is already looking.
 pairing.onAnnounce = { code in mpv.showText("MPV Remote pairing code: \(code)", seconds: 20) }
 
