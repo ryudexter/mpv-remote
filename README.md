@@ -114,16 +114,21 @@ team does go through a short Beta App Review.
 
 ### App Store art
 
-`AppStore/` holds the product-page header and the iPhone screenshots, in the
-large (1320×2868) and medium (1179×2556) sizes, and the Watch screenshots
-(416×496, from the Apple Watch Series 12 (46mm) simulator).
-Both are generated, as is the app icon. `make-icon.swift` draws MPV Player
-Tiger Version's Mac icon too (`laptop` instead of `remote`), so the two apps
-keep matching icons:
+`AppStore/` holds the iPhone screenshots, in the large (1320×2868) and medium
+(1179×2556) sizes, the Watch screenshots (416×496, from the Apple Watch
+Series 12 (46mm) simulator), and the creative assets in `creative-assets/`:
+the product-page header (21:9, 3840×1646), the search results art (3:2,
+3840×2560) and a Watch-led header (`header-watch-…`) kept in the asset library
+to swap in or test against the header. App Store Connect takes one header and
+one search results asset per language, so there's no slot for a second.
+The iPhone screenshots and creative assets are generated from the raw
+screenshots and the Watch ones, as is the app icon. `make-icon.swift` draws MPV
+Player Tiger Version's Mac icon too (`laptop` instead of `remote`), so the two
+apps keep matching icons:
 
 ```bash
 swift App/Tools/make-icon.swift remote App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png
-swift App/Tools/make-store-art.swift <raw-screenshots-dir> App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png AppStore
+swift App/Tools/make-store-art.swift <raw-screenshots-dir> AppStore/screenshots/watch-416x496 App/MPVRemote/Assets.xcassets/AppIcon.appiconset/AppIcon.png AppStore
 ```
 
 The raw screenshots come from the iPhone 18 Pro Max simulator
