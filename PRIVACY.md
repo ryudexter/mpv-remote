@@ -1,6 +1,6 @@
 # MPV Player Remote — Privacy Policy
 
-*Effective October 17, 2026*
+*Effective October 29, 2026*
 
 MPV Player Remote does not collect, store or share any personal data.
 
@@ -20,7 +20,8 @@ MPV Player Remote does not collect, store or share any personal data.
   `~/Library/Application Support/MPV Remote/paired-devices.json`.
 - **Playback information.** What mpv is playing (titles, tracks, playlist,
   and a small still of the frame on screen) travels only between your Mac and
-  your iPhone, to show it in the app. The still isn't kept anywhere.
+  your iPhone, to show it in the app, and from your iPhone to your Apple Watch
+  if you use the Watch app. The still isn't kept anywhere.
 
 ## Local network permission
 
