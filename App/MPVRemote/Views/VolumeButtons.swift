@@ -9,12 +9,19 @@ enum VolumeButton {
 extension View {
     /// Calls `action` when the iPhone's volume up or down button is pressed,
     /// in place of the buttons changing the phone's own volume.
+    ///
+    /// Never on a Mac, which has no such buttons: there iOS reports the volume
+    /// as full whatever the Mac's is, and the catcher unmuted the Mac and
+    /// turned it up nearly all the way each time the app came to the front,
+    /// and all the way each time it went to the back.
     func onVolumeButtons(isEnabled: Bool, perform action: @escaping (VolumeButton) -> Void) -> some View {
         background {
-            VolumeButtonCatcher(isEnabled: isEnabled, onPress: action)
-                .frame(width: 1, height: 1)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            if !ProcessInfo.processInfo.isiOSAppOnMac {
+                VolumeButtonCatcher(isEnabled: isEnabled, onPress: action)
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
     }
 }
