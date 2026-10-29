@@ -41,9 +41,10 @@ func render(width: Int, height: Int, to url: URL, _ draw: (CGRect) -> Void) {
     CGImageDestinationFinalize(destination)
 }
 
+/// The tiger icon's orange, with text in the near-black of its stripes.
 func backdrop(_ rect: CGRect, glowAt glow: CGPoint, glowRadius: CGFloat) {
-    NSGradient(colors: [color(0x3A1A86), color(0x0E0620)])!.draw(in: rect, angle: -90)
-    NSGradient(colors: [color(0x8B5CF6, 0.45), color(0x8B5CF6, 0)])!
+    NSGradient(colors: [color(0xF7A03A), color(0xE0640F)])!.draw(in: rect, angle: -90)
+    NSGradient(colors: [color(0xFFD27A, 0.45), color(0xFFD27A, 0)])!
         .draw(fromCenter: glow, radius: 0, toCenter: glow, radius: glowRadius, options: [])
 }
 
@@ -101,9 +102,9 @@ for (width, height) in [(1320, 2868), (1179, 2556)] {
             let lines = CGFloat(shot.headline.split(separator: "\n").count)
             let headlineHeight = 118 * k * lines
             let headlineTop = H - 170 * k
-            text(shot.headline, size: 104 * k, weight: .bold, color: .white, alignment: .center,
+            text(shot.headline, size: 104 * k, weight: .bold, color: color(0x1E1712), alignment: .center,
                  in: CGRect(x: 80 * k, y: headlineTop - headlineHeight, width: W - 160 * k, height: headlineHeight))
-            text(shot.subline, size: 50 * k, weight: .medium, color: color(0xCDBEFF, 0.9), alignment: .center,
+            text(shot.subline, size: 50 * k, weight: .medium, color: color(0x1E1712, 0.78), alignment: .center,
                  in: CGRect(x: 80 * k, y: headlineTop - headlineHeight - 100 * k, width: W - 160 * k, height: 70 * k))
             let phoneWidth = 1030 * k, phoneHeight = phoneWidth * 2868 / 1320
             let phoneTop = headlineTop - headlineHeight - 170 * k
@@ -139,14 +140,25 @@ for (width, height) in [(3840, 1646), (5244, 2950)] {
         let blockHeight = iconSize + s * 0.05 + s * 0.1 + s * 0.12
         let top = H / 2 + blockHeight / 2
         let iconRect = CGRect(x: left, y: top - iconSize, width: iconSize, height: iconSize)
+        let iconShape = NSBezierPath(roundedRect: iconRect, xRadius: iconSize * 0.225, yRadius: iconSize * 0.225)
+        // A shadow, or the orange icon melts into the orange backdrop.
         NSGraphicsContext.saveGraphicsState()
-        NSBezierPath(roundedRect: iconRect, xRadius: iconSize * 0.225, yRadius: iconSize * 0.225).addClip()
+        let shadow = NSShadow()
+        shadow.shadowColor = color(0x5A2300, 0.45)
+        shadow.shadowBlurRadius = iconSize * 0.12
+        shadow.shadowOffset = NSSize(width: 0, height: -iconSize * 0.04)
+        shadow.set()
+        color(0xE0640F).setFill()
+        iconShape.fill()
+        NSGraphicsContext.restoreGraphicsState()
+        NSGraphicsContext.saveGraphicsState()
+        iconShape.addClip()
         icon.draw(in: iconRect)
         NSGraphicsContext.restoreGraphicsState()
         let nameTop = iconRect.minY - s * 0.04
-        text("MPV Player Remote", size: s * 0.085, weight: .bold, color: .white, alignment: .left,
+        text("MPV Player Remote", size: s * 0.085, weight: .bold, color: color(0x1E1712), alignment: .left,
              in: CGRect(x: left, y: nameTop - s * 0.11, width: W * 0.4, height: s * 0.11))
-        text("Control mpv on your Mac\nfrom your iPhone.", size: s * 0.05, weight: .medium, color: color(0xCDBEFF, 0.9),
+        text("Control mpv on your Mac\nfrom your iPhone.", size: s * 0.05, weight: .medium, color: color(0x1E1712, 0.78),
              alignment: .left, in: CGRect(x: left, y: nameTop - s * 0.11 - s * 0.14, width: W * 0.4, height: s * 0.13))
     }
 }

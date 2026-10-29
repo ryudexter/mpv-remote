@@ -127,8 +127,21 @@ swift App/Tools/make-store-art.swift <raw-screenshots-dir> App/MPVRemote/Assets.
 ```
 
 The raw screenshots come from the iPhone 18 Pro Max simulator
-(`xcrun simctl io booted screenshot …`), named as in the `shots` list at the
-top of `make-store-art.swift`.
+(`xcrun simctl io booted screenshot …`, after
+`xcrun simctl status_bar booted override --time 09:41 --batteryState discharging --batteryLevel 100`),
+named as in the `shots` list at the top of `make-store-art.swift`. The phone
+is connected to a stand-in Mac rather than in Demo Mode, so they show
+"MacBook Pro" and a picture: `ScreenshotCompanion` runs the companion's own
+server with the demo series, sending a frame `make-demo-frame.swift` draws
+(an aurora, for "The Northern Lights"):
+
+```bash
+swift App/Tools/make-demo-frame.swift /tmp/frame.jpg
+HOME=/tmp/shots CFFIXED_USER_HOME=/tmp/shots swift run --package-path App/Tools/ScreenshotCompanion screenshot-companion /tmp/frame.jpg --port 7656 --at 1452
+```
+
+Tap *MacBook Pro* and enter the code it prints. The spare home folder keeps
+the simulator out of the real companion's `paired-devices.json`.
 
 ## How it fits together
 
