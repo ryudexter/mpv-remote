@@ -19,7 +19,9 @@ struct RootView: View {
             PairingView()
                 .environment(remote)
         }
-        .onChange(of: scenePhase) { _, phase in
+        // Initially too: an app the Watch started in the background may have
+        // let its connection go before anything was on screen.
+        .onChange(of: scenePhase, initial: true) { _, phase in
             remote.setActive(phase != .background)
         }
     }

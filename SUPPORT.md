@@ -16,6 +16,9 @@ versions if you can.
 - A Mac with MPV Player Tiger Version (macOS 15 or later), or with mpv and the
   free MPV Remote script (macOS 14 or later)
 - Both on the same Wi-Fi network
+- Optionally, an Apple Watch with watchOS 10 or later, paired with that iPhone.
+  The MPV Player Remote Watch app installs along with the iPhone app (or from
+  the App Store on the Watch) and uses whichever Mac the iPhone is set up with
 
 Just want to look around first? Tap **Try the Demo** in the app — no Mac
 needed.
@@ -61,6 +64,12 @@ mpv window you open takes over.
 
 **I lost the pairing code.**
 Cancel and tap your Mac again; the code appears over the video again.
+
+**The Watch says it can't reach my iPhone.**
+The Watch sends everything through MPV Player Remote on your iPhone, so keep
+the iPhone nearby with Bluetooth or Wi-Fi on. The iPhone app doesn't need to be
+open. If the Watch asks you to pair, open the app on your iPhone and enter the
+code there.
 
 ## Privacy
 

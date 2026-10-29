@@ -5,7 +5,7 @@ import RemoteProtocol
 import UIKit
 
 /// The app's one connection to a companion: pairing, the live player state,
-/// and sending commands.
+/// sending commands, and the Watch app's relay.
 @Observable
 final class RemoteController {
     enum Status: Equatable {
@@ -35,9 +35,23 @@ final class RemoteController {
     private var timeoutTask: Task<Void, Never>?
     private var isActive = true
 
+    private var relay: WatchRelay?
+    /// Runs while the Watch app is in use, which keeps the connection open with
+    /// this app in the background.
+    private var watchTimeout: Task<Void, Never>?
+    private var watchBackgroundTask = UIBackgroundTaskIdentifier.invalid
+    /// Commands from the Watch that arrived before the companion had accepted
+    /// the connection, usually because the first one woke this app.
+    private var watchCommandsWaiting: [PlayerCommand] = []
+
     init() {
         computer = SavedComputer.load()
         if computer != nil { connect() }
+        // Here rather than in a view: the Watch can start this app in the
+        // background, with no views.
+        relay = WatchRelay { [weak self] message in self?.handle(message) }
+        relay?.activate()
+        pushToWatchOnChange()
     }
 
     /// Where playback is at `date`, assuming it carried on since the last update.
@@ -80,6 +94,7 @@ final class RemoteController {
         state = PlayerState()
         thumbnail = nil
         pairingFailed = false
+        watchCommandsWaiting = []
     }
 
     func pair(code: String) {
@@ -95,8 +110,9 @@ final class RemoteController {
         guard active != isActive else { return }
         isActive = active
         if active {
-            connect()
-        } else {
+            // The Watch may have kept the connection open meanwhile.
+            if connection == nil { connect() }
+        } else if watchTimeout == nil {
             disconnect()
         }
     }
@@ -217,7 +233,8 @@ final class RemoteController {
         // Whatever was playing may have stopped since; don't keep showing it.
         state = PlayerState()
         thumbnail = nil
-        guard isActive else { return }
+        watchCommandsWaiting = []
+        guard isActive || watchTimeout != nil else { return }
         retryTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
@@ -249,6 +266,8 @@ final class RemoteController {
                 computer?.name = computerName
                 computer?.save()
             }
+            for command in watchCommandsWaiting { send(command) }
+            watchCommandsWaiting = []
         case .pairingRequired:
             // The companion doesn't know this phone, or no longer does.
             if let name = computer?.name { SavedComputer.forgetToken(for: name) }
@@ -276,5 +295,83 @@ final class RemoteController {
         let metadata = NWProtocolWebSocket.Metadata(opcode: .text)
         let context = NWConnection.ContentContext(identifier: "message", metadata: [metadata])
         connection.send(content: data, contentContext: context, isComplete: true, completion: .idempotent)
+    }
+
+    // MARK: Apple Watch
+
+    /// What the Watch app shows.
+    private var watchState: WatchState {
+        let connection: WatchState.Connection = switch (computer, status) {
+        case (nil, _): .noComputer
+        case (_, .connecting): .connecting
+        case (_, .needsPairing): .needsPairing
+        case (_, .connected): .connected
+        case (_, .unreachable): .unreachable
+        }
+        let now = Date.now
+        var player = state
+        player.position = state.position.map { _ in position(at: now) }
+        player.playlist = []
+        player.chapters = []
+        player.tracks.removeAll { $0.kind == .video }
+        return WatchState(computerName: computer?.name, connection: connection, player: player,
+                          playlistCount: state.playlist.count, positionDate: now)
+    }
+
+    /// Sends the Watch each change, whether or not this app is on screen.
+    private func pushToWatchOnChange() {
+        let watchState = withObservationTracking { self.watchState } onChange: { [weak self] in
+            // Called before the change is made; the next turn sees it.
+            Task { @MainActor in self?.pushToWatchOnChange() }
+        }
+        relay?.push(watchState)
+    }
+
+    private func handle(_ message: WatchMessage) -> WatchState? {
+        watchIsInUse()
+        switch message {
+        case .command(let command):
+            if status == .connected {
+                send(command)
+            } else if computer != nil {
+                watchCommandsWaiting.append(command)
+            }
+        case .requestState, .state:
+            break
+        }
+        return watchState
+    }
+
+    /// Stays connected for 25 seconds after each message from the Watch, even
+    /// with this app in the background. While it's open, the Watch app checks in
+    /// every 15 seconds, so the connection lasts as long as it does.
+    private func watchIsInUse() {
+        if watchBackgroundTask == .invalid {
+            watchBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Apple Watch") { [weak self] in
+                self?.watchWentAway()
+            }
+        }
+        watchTimeout?.cancel()
+        watchTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(25))
+            guard !Task.isCancelled else { return }
+            self?.watchWentAway()
+        }
+        if connection == nil, demo == nil { connect() }
+    }
+
+    private func watchWentAway() {
+        watchTimeout?.cancel()
+        watchTimeout = nil
+        // Started in the background for the Watch, the app never had a scene
+        // to leave the screen, so `setActive(false)` was never called.
+        if UIApplication.shared.applicationState == .background {
+            isActive = false
+            disconnect()
+        }
+        if watchBackgroundTask != .invalid {
+            UIApplication.shared.endBackgroundTask(watchBackgroundTask)
+            watchBackgroundTask = .invalid
+        }
     }
 }
