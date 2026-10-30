@@ -33,6 +33,8 @@ final class RemoteController {
     private var connection: NWConnection?
     private var retryTask: Task<Void, Never>?
     private var timeoutTask: Task<Void, Never>?
+    /// Runs from `hello` until the companion answers it.
+    private var handshakeTask: Task<Void, Never>?
     private var isActive = true
 
     private var relay: WatchRelay?
@@ -211,6 +213,8 @@ final class RemoteController {
         retryTask = nil
         timeoutTask?.cancel()
         timeoutTask = nil
+        handshakeTask?.cancel()
+        handshakeTask = nil
         connection?.cancel()
         connection = nil
     }
@@ -220,6 +224,13 @@ final class RemoteController {
         switch newState {
         case .ready:
             send(.hello(version: RemoteService.protocolVersion, token: computer?.token))
+            // Something is listening, but not necessarily the companion, or not
+            // answering: without this the screen would say "Connecting" for ever.
+            handshakeTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(10))
+                guard !Task.isCancelled, let self, connection === self.connection else { return }
+                self.connectionLost()
+            }
         case .waiting, .failed:
             connectionLost()
         default:
@@ -261,6 +272,7 @@ final class RemoteController {
     private func handle(_ message: ServerMessage) {
         switch message {
         case .welcome(let computerName):
+            handshakeTask?.cancel()
             status = .connected
             if computer?.name != computerName {
                 computer?.name = computerName
@@ -269,6 +281,7 @@ final class RemoteController {
             for command in watchCommandsWaiting { send(command) }
             watchCommandsWaiting = []
         case .pairingRequired:
+            handshakeTask?.cancel()
             // The companion doesn't know this phone, or no longer does.
             if let name = computer?.name { SavedComputer.forgetToken(for: name) }
             computer?.token = nil

@@ -202,8 +202,15 @@ final class ClientSession {
     var onMessage: ((ClientSession, ClientMessage) -> Void)?
     var onClose: ((ClientSession) -> Void)?
 
+    /// How long a new connection has to say hello.
+    static let helloTimeout: Duration = .seconds(10)
+    /// How long one that isn't paired yet may wait, e.g. for someone to read out the code.
+    static let pairingTimeout: Duration = .seconds(300)
+
     private let connection: NWConnection
     private var isClosed = false
+    private var hasSpoken = false
+    private var timeouts: [Task<Void, Never>] = []
 
     init(connection: NWConnection, source: String) {
         self.connection = connection
@@ -221,6 +228,18 @@ final class ClientSession {
         }
         connection.start(queue: .main)
         receive()
+        // Phones that never say hello, or never get as far as pairing, shouldn't be kept for ever.
+        closeAfter(Self.helloTimeout) { !$0.hasSpoken }
+        closeAfter(Self.pairingTimeout) { !$0.isAuthorized }
+    }
+
+    private func closeAfter(_ delay: Duration, if condition: @escaping @MainActor (ClientSession) -> Bool) {
+        timeouts.append(Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self, condition(self) else { return }
+            log("Closing a connection from \(self.source) that didn't \(self.hasSpoken ? "pair" : "say hello") in time")
+            self.close()
+        })
     }
 
     func send(_ message: ServerMessage) {
@@ -239,6 +258,7 @@ final class ClientSession {
                     return
                 }
                 if let data, let message = try? JSONDecoder().decode(ClientMessage.self, from: data) {
+                    self.hasSpoken = true
                     self.onMessage?(self, message)
                 }
                 self.receive()
@@ -249,6 +269,7 @@ final class ClientSession {
     private func close() {
         guard !isClosed else { return }
         isClosed = true
+        timeouts.forEach { $0.cancel() }
         connection.cancel()
         onClose?(self)
     }
