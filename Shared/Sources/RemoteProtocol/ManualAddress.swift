@@ -39,9 +39,25 @@ public struct ManualAddress: Equatable, Sendable {
         }
     }
 
-    private init(host: String, port: UInt16) {
+    public init(host: String, port: UInt16) {
         self.host = host
         self.port = port
+    }
+
+    /// The address as a `ws://` URL. Network.framework can't open a WebSocket
+    /// to a host and port when the host is an IP address (it fails with "unable
+    /// to create url endpoint"), but it can when given the URL, whatever the host.
+    public var webSocketURL: URL? {
+        var components = URLComponents()
+        components.scheme = "ws"
+        if host.contains(":") {
+            // An IPv6 address goes in brackets, and its "%" (before an interface name) is escaped.
+            components.percentEncodedHost = "[" + host.replacingOccurrences(of: "%", with: "%25") + "]"
+        } else {
+            components.host = host
+        }
+        components.port = Int(port)
+        return components.url
     }
 
     private static func port(_ digits: Substring) -> UInt16? {

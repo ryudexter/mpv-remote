@@ -42,3 +42,18 @@ struct ManualAddressTests {
         }
     }
 }
+
+struct ManualAddressURLTests {
+    private func url(_ text: String) -> String? {
+        ManualAddress(text)?.webSocketURL?.absoluteString
+    }
+
+    @Test func urlsForEachKindOfAddress() {
+        #expect(url("192.168.1.20") == "ws://192.168.1.20:7655")
+        #expect(url("192.168.1.20:7700") == "ws://192.168.1.20:7700")
+        #expect(url("studio.local") == "ws://studio.local:7655")
+        #expect(url("fe80::1") == "ws://[fe80::1]:7655")
+        #expect(url("[::1]:7700") == "ws://[::1]:7700")
+        #expect(url("fe80::1%en0") == "ws://[fe80::1%25en0]:7655")
+    }
+}

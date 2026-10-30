@@ -23,7 +23,9 @@ struct SavedComputer: Codable, Equatable {
         case .bonjour(let name):
             .service(name: name, type: RemoteService.bonjourType, domain: "local.", interface: nil)
         case .host(let host, let port):
-            .hostPort(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port) ?? 7655)
+            // As a URL, not a host and port: a WebSocket can't be opened to an IP address given as the latter.
+            ManualAddress(host: host, port: port).webSocketURL.map { NWEndpoint.url($0) }
+                ?? .hostPort(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port) ?? 7655)
         case .demo:
             nil
         }
