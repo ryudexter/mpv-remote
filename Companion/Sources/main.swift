@@ -61,14 +61,28 @@ mpv.onChange = { state, positionOnly in
 mpv.onEvent = { event in thumbnails.handle(event: event) }
 server.onCommand = { command in mpv.perform(command) }
 server.onPhoneConnected = { thumbnails.phoneConnected() }
+/// Whether the port was already taken when we last tried, so a long wait logs once.
+var waitingForPort = false
 server.onFailure = { error in
     if case .posix(.EADDRINUSE) = error {
-        // Most likely a second mpv window: the first one's helper already serves the phone.
-        log("Port \(port) is already in use, probably by another MPV Remote companion; quitting")
-        exit(0)
+        // Most likely another mpv window: the first one's helper serves the phone.
+        // Keep watching mpv and take the port over once that helper quits, so this
+        // mpv can be controlled too when the first one is closed.
+        if !waitingForPort {
+            log("Port \(port) is already in use, probably by another MPV Remote companion; waiting for it to quit")
+            waitingForPort = true
+        }
+        server.startAgain(after: .seconds(2))
+        return
     }
     log("Listener failed: \(error)")
     exit(1)
+}
+server.onListening = {
+    if waitingForPort { log("Port \(port) is free now") }
+    waitingForPort = false
+    // Phones paired through the helper that had the port aren't in our copy.
+    pairing.reload()
 }
 // The code also appears over the video, where whoever is pairing is already looking.
 pairing.onAnnounce = { code in mpv.showText("MPV Remote pairing code: \(code)", seconds: 20) }

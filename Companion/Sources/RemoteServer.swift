@@ -11,6 +11,8 @@ final class RemoteServer {
     /// Called if the listener stops for good, as when another program already
     /// has the port (`.posix(.EADDRINUSE)`). Nothing is served after that.
     var onFailure: ((NWError) -> Void)?
+    /// Called each time the listener is up and phones can connect.
+    var onListening: (() -> Void)?
 
     /// Whether any paired phone is connected right now.
     var hasPhones: Bool { sessions.values.contains(where: \.isAuthorized) }
@@ -19,6 +21,7 @@ final class RemoteServer {
     private let port: NWEndpoint.Port
     private let pairing: PairingStore
     private var listener: NWListener?
+    private var restart: Task<Void, Never>?
     private var sessions: [ObjectIdentifier: ClientSession] = [:]
 
     private var latestState = PlayerState()
@@ -43,7 +46,9 @@ final class RemoteServer {
         listener.service = NWListener.Service(name: computerName, type: RemoteService.bonjourType)
         listener.stateUpdateHandler = { [weak self, port] state in
             switch state {
-            case .ready: log("Listening on port \(port), advertised over Bonjour")
+            case .ready:
+                log("Listening on port \(port), advertised over Bonjour")
+                MainActor.assumeIsolated { self?.onListening?() }
             case .failed(let error): MainActor.assumeIsolated { self?.fail(error) }
             default: break
             }
@@ -59,6 +64,23 @@ final class RemoteServer {
         listener?.cancel()
         listener = nil
         onFailure?(error)
+    }
+
+    /// Starts listening again after `delay`, as when another companion had the
+    /// port and may let go of it. Asks `onFailure` again if it still can't.
+    func startAgain(after delay: Duration) {
+        restart?.cancel()
+        restart = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self, self.listener == nil else { return }
+            do {
+                try self.start()
+            } catch let error as NWError {
+                self.fail(error)
+            } catch {
+                self.fail(.posix(.EIO))
+            }
+        }
     }
 
     /// Takes the latest player state and pushes it to paired phones, coalescing

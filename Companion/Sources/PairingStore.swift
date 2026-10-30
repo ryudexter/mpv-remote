@@ -19,7 +19,16 @@ final class PairingStore {
 
     init() {
         fileURL = URL.applicationSupportDirectory.appending(path: "MPV Remote/paired-devices.json")
-        devices = (try? JSONDecoder().decode([Device].self, from: Data(contentsOf: fileURL))) ?? []
+        devices = Self.load(from: fileURL)
+    }
+
+    /// Picks up phones another companion paired since this one started.
+    func reload() {
+        devices = Self.load(from: fileURL)
+    }
+
+    private static func load(from url: URL) -> [Device] {
+        (try? JSONDecoder().decode([Device].self, from: Data(contentsOf: url))) ?? []
     }
 
     func deviceName(forToken token: String) -> String? {
