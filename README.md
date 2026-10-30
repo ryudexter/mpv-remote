@@ -76,8 +76,9 @@ with it. Its screen is Cingle Remote's Watch remote, tinted in the iPhone
 app's purple: a pad under the computer's name, with what's playing along its
 top and Previous, Play/Pause and Next along its bottom. Tap the pad to play or
 pause, swipe sideways to skip 10 seconds (a long drag keeps skipping), and
-swipe up or down, or turn the Digital Crown, for volume. The button in the
-top-left corner has Full Screen, Mute, and the subtitle and audio tracks.
+swipe up or down, or turn the Digital Crown, for volume. A short screen
+introduces these the first time the app opens. The button in the top-left
+corner has Full Screen, Mute, and the subtitle and audio tracks.
 
 It uses whichever computer the iPhone is set up with, and never pairs itself.
 watchOS doesn't let apps open the companion's WebSocket, so the Watch sends

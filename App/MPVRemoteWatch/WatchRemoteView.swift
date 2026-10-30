@@ -12,6 +12,7 @@ struct WatchRemoteView: View {
     @State private var crown = 0.0
     @State private var lastCrownStep = 0
     @State private var showingOptions = false
+    @AppStorage("hasSeenGestureTips") private var hasSeenTips = false
 
     /// The crown wraps around at the ends of this, which `Crown` accounts for.
     private static let crownRange = -1_000.0...1_000.0
@@ -33,6 +34,9 @@ struct WatchRemoteView: View {
             }
             .navigationDestination(isPresented: $showingOptions) {
                 PlayerOptions()
+            }
+            .sheet(isPresented: Binding { !hasSeenTips } set: { hasSeenTips = !$0 }) {
+                GestureTips()
             }
             .focusable()
             .digitalCrownRotation(
@@ -110,15 +114,22 @@ private struct Pad: View {
                 }
             }
             .overlay(alignment: .bottom) {
-                HStack(alignment: .center, spacing: 10) {
-                    RoundKey("Previous", systemImage: "backward.end.fill", command: .playlistPrevious, diameter: 38)
+                HStack(spacing: 0) {
+                    RoundKey("Previous", systemImage: "backward.end.fill", command: .playlistPrevious, diameter: 36)
                         .disabled((link.state?.playlistCount ?? 0) < 2)
+                    Spacer(minLength: 0)
+                    // Large, as it's the key that gets used most. With nothing to
+                    // play, the hint needs the room.
                     RoundKey(player?.isPaused != false ? "Play" : "Pause",
                              systemImage: player?.isPaused != false ? "play.fill" : "pause.fill",
-                             command: .togglePause, diameter: 46)
-                    RoundKey("Next", systemImage: "forward.end.fill", command: .playlistNext, diameter: 38)
+                             command: .togglePause, diameter: link.isPlaying ? 64 : 46)
+                    Spacer(minLength: 0)
+                    RoundKey("Next", systemImage: "forward.end.fill", command: .playlistNext, diameter: 36)
                         .disabled((link.state?.playlistCount ?? 0) < 2)
                 }
+                // 10 points between the keys, closing up on the narrowest Watches.
+                .frame(maxWidth: 156)
+                .padding(.horizontal, 4)
                 .disabled(!link.isPlaying)
                 .padding(.bottom, 4)
             }
@@ -202,7 +213,6 @@ private struct Hint: View {
 /// stretch of travel, so one long drag skips a minute.
 private struct SwipeArea: View {
     @Environment(RemoteLink.self) private var link
-    @AppStorage("hasSwipedOnPad") private var hasSwiped = false
     let keyStrip: CGFloat
 
     @State private var touch: CGPoint?
@@ -231,20 +241,6 @@ private struct SwipeArea: View {
                         .frame(width: 48, height: 48)
                         .position(touch)
                         .allowsHitTesting(false)
-                }
-            }
-            .overlay {
-                if !hasSwiped, link.isPlaying {
-                    Text("Tap to pause, swipe to skip")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        // Between the skip marks, below what's playing.
-                        .padding(.horizontal, 28)
-                        .padding(.top, 36)
-                        .padding(.bottom, keyStrip)
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
                 }
             }
             .contentShape(.rect)
@@ -286,15 +282,44 @@ private struct SwipeArea: View {
             link.changeVolume(up: dy < 0)
         }
         self.anchor = location
-        if !didMove {
-            didMove = true
-            withAnimation { hasSwiped = true }
-        }
+        didMove = true
     }
 
     private func send(_ command: PlayerCommand) {
         presses += 1
         link.send(command)
+    }
+}
+
+/// What the pad and the crown do, which nothing on it spells out. Shown the
+/// first time the app opens.
+private struct GestureTips: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                tip("Tap to play or pause", systemImage: "hand.tap.fill")
+                tip("Swipe sideways to skip 10 seconds", systemImage: "hand.draw.fill")
+                tip("Turn the Digital Crown for volume", systemImage: "digitalcrown.arrow.clockwise.fill")
+                Button("Got It") { dismiss() }
+                    .padding(.top, 4)
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+
+    private func tip(_ title: LocalizedStringKey, systemImage: String) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(.tint)
+                // The symbols differ in width; this keeps the text lined up.
+                .frame(width: 22)
+        }
+        .font(.footnote)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
