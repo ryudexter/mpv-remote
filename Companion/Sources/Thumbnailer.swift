@@ -26,9 +26,16 @@ final class Thumbnailer {
     /// artwork, and about 80 KB, so it arrives in a moment.
     nonisolated private static let maxPixelSize = 960
 
+    /// Saves the frame on screen to a file as an image, then reports whether
+    /// that worked. mpv's own screenshot-to-file unless replaced: that needs
+    /// FFmpeg's image encoders, which MPV Player Tiger Version's FFmpeg is
+    /// built without, so the app saves the frame itself.
+    var saveFrame: (URL, @escaping (Bool) -> Void) -> Void
+
     init(mpv: MPVConnection, server: RemoteServer) {
         self.mpv = mpv
         self.server = server
+        saveFrame = { url, completion in mpv.saveFrame(to: url, completion: completion) }
     }
 
     func handle(event: String) {
@@ -83,7 +90,7 @@ final class Thumbnailer {
         isCapturing = true
         let generation = generation
         let url = fileURL
-        mpv.saveFrame(to: url) { [weak self] saved in
+        saveFrame(url) { [weak self] saved in
             Task { [weak self] in
                 let jpeg = saved ? await Task.detached { Self.shrink(url) }.value : nil
                 try? FileManager.default.removeItem(at: url)
