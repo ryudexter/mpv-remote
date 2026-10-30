@@ -29,17 +29,11 @@ struct SavedComputer: Codable, Equatable {
         }
     }
 
-    /// Accepts "192.168.1.20", "studio.local" or either with ":port".
+    /// Accepts "192.168.1.20", "studio.local", either with ":port", and IPv6
+    /// addresses, bare or as "[fe80::1]:port". Nothing else.
     init?(manualAddress: String) {
-        let text = manualAddress.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return nil }
-        var host = text
-        var port = RemoteService.defaultPort
-        if let colon = text.lastIndex(of: ":"), let parsed = UInt16(text[text.index(after: colon)...]) {
-            host = String(text[..<colon])
-            port = parsed
-        }
-        self.init(name: host, address: .host(host, port: port))
+        guard let address = ManualAddress(manualAddress) else { return nil }
+        self.init(name: address.host, address: .host(address.host, port: address.port))
     }
 
     init(name: String, address: Address, token: String? = nil) {
