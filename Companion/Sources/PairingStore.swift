@@ -13,14 +13,8 @@ final class PairingStore {
         case lockedOut
     }
 
-    private struct Device: Codable {
-        var name: String
-        var token: String
-        var pairedAt: Date
-    }
-
     private(set) var code = PairingStore.makeCode()
-    private var devices: [Device]
+    private var devices: PairedDevices
     private var guesses = PairingGuard()
     private var announced: (code: String, at: Date)?
     private var lastLockoutLogged = Date.distantPast
@@ -36,17 +30,17 @@ final class PairingStore {
         devices = Self.load(from: fileURL)
     }
 
-    private static func load(from url: URL) -> [Device] {
-        (try? JSONDecoder().decode([Device].self, from: Data(contentsOf: url))) ?? []
+    private static func load(from url: URL) -> PairedDevices {
+        PairedDevices((try? JSONDecoder().decode([PairedDevice].self, from: Data(contentsOf: url))) ?? [])
     }
 
     func deviceName(forToken token: String) -> String? {
-        devices.first { $0.token == token }?.name
+        devices.name(forToken: token)
     }
 
     /// Checks `attempt` against the current code and, if it matches, returns a
     /// new token. `source` says who is asking (see `PairingGuard.source(of:)`).
-    func pair(code attempt: String, deviceName: String, from source: String) -> Outcome {
+    func pair(code attempt: String, deviceName: String, deviceID: String?, from source: String) -> Outcome {
         let now = Date.now
         guard guesses.allowsGuess(from: source, at: now) else {
             // One line per burst, so a flood of guesses can't fill the log.
@@ -65,7 +59,10 @@ final class PairingStore {
             return .wrongCode
         }
         let token = (0..<32).map { _ in String(format: "%02x", UInt8.random(in: .min ... .max)) }.joined()
-        devices.append(Device(name: deviceName, token: token, pairedAt: .now))
+        // Both are kept in a file and shown in the log, so a phone can't make them huge.
+        let replaced = devices.add(PairedDevice(name: String(deviceName.prefix(64)), token: token, pairedAt: .now,
+                                               id: deviceID.map { String($0.prefix(64)) }))
+        if replaced > 0 { log("\(deviceName) had paired before; its old pairing is replaced") }
         save()
         guesses.recordPairing(from: source)
         rotateCode()
@@ -104,7 +101,7 @@ final class PairingStore {
     private func save() {
         do {
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try JSONEncoder().encode(devices).write(to: fileURL, options: .atomic)
+            try JSONEncoder().encode(devices.all).write(to: fileURL, options: .atomic)
         } catch {
             log("Could not save paired devices: \(error.localizedDescription)")
         }

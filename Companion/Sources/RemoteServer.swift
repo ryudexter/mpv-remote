@@ -147,8 +147,8 @@ final class RemoteServer {
                 session.send(.pairingRequired(computerName: computerName))
                 pairing.announceCode(reason: "A phone wants to pair.", to: session.source)
             }
-        case .pair(let code, let deviceName):
-            switch pairing.pair(code: code, deviceName: deviceName, from: session.source) {
+        case .pair(let code, let deviceName, let deviceID):
+            switch pairing.pair(code: code, deviceName: deviceName, deviceID: deviceID, from: session.source) {
             case .paired(let token):
                 session.send(.paired(token: token))
                 authorize(session, deviceName: deviceName)

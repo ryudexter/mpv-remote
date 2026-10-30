@@ -101,7 +101,7 @@ final class RemoteController {
 
     func pair(code: String) {
         pairingFailed = false
-        send(.pair(code: code, deviceName: UIDevice.current.name))
+        send(.pair(code: code, deviceName: UIDevice.current.name, deviceID: SavedComputer.deviceID))
     }
 
     // MARK: App lifecycle
@@ -283,6 +283,7 @@ final class RemoteController {
         case .pairingRequired:
             handshakeTask?.cancel()
             // The companion doesn't know this phone, or no longer does.
+            if let token = computer?.token { SavedComputer.forgetToken(token) }
             if let name = computer?.name { SavedComputer.forgetToken(for: name) }
             computer?.token = nil
             status = .needsPairing

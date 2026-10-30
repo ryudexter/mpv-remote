@@ -80,6 +80,23 @@ struct SavedComputer: Codable, Equatable {
         tokens[name] = nil
     }
 
+    /// Drops a token wherever it's kept: a computer chosen under two names, such
+    /// as the address typed in and the name it answered with, has it under both.
+    static func forgetToken(_ token: String) {
+        tokens = tokens.filter { $0.value != token }
+    }
+
+    /// Tells the companion which phone is pairing, so pairing again replaces the
+    /// first time instead of adding to it. Made once per install.
+    static var deviceID: String {
+        if let id = UserDefaults.standard.string(forKey: deviceIDKey) { return id }
+        let id = UUID().uuidString
+        UserDefaults.standard.set(id, forKey: deviceIDKey)
+        return id
+    }
+
+    private static let deviceIDKey = "deviceID"
+
     private static var tokens: [String: String] {
         get { UserDefaults.standard.dictionary(forKey: tokensKey) as? [String: String] ?? [:] }
         set { UserDefaults.standard.set(newValue, forKey: tokensKey) }
