@@ -3,6 +3,7 @@ import RemoteProtocol
 
 let usage = """
     Usage: mpv-remote [--socket PATH] [--port PORT] [--name NAME] [--exit-with-mpv] [--log FILE]
+                      [--paired-devices FILE]
 
       --socket PATH    mpv's IPC socket, as given to --input-ipc-server
                        (default: /tmp/mpvsocket)
@@ -12,6 +13,9 @@ let usage = """
       --exit-with-mpv  quit when mpv does, instead of waiting for it to come
                        back (how the mpv script runs it)
       --log FILE       append output to FILE instead of printing it
+      --paired-devices FILE
+                       where paired phones are kept (default: MPV Remote/
+                       paired-devices.json in Application Support)
     """
 
 var socketPath = "/tmp/mpvsocket"
@@ -19,6 +23,7 @@ var port = RemoteService.defaultPort
 var computerName = Host.current().localizedName ?? "Mac"
 var exitsWithMPV = false
 var logPath: String?
+var pairedDevicesPath: String?
 
 var arguments = CommandLine.arguments.dropFirst()
 while let argument = arguments.popFirst() {
@@ -28,6 +33,7 @@ while let argument = arguments.popFirst() {
     case "--name": computerName = arguments.popFirst() ?? computerName
     case "--exit-with-mpv": exitsWithMPV = true
     case "--log": logPath = arguments.popFirst()
+    case "--paired-devices": pairedDevicesPath = arguments.popFirst()
     case "-h", "--help":
         print(usage)
         exit(0)
@@ -50,7 +56,7 @@ if let logPath {
 setvbuf(stdout, nil, _IOLBF, 0)
 signal(SIGPIPE, SIG_IGN)
 
-let pairing = PairingStore()
+let pairing = pairedDevicesPath.map { PairingStore(fileURL: URL(filePath: $0)) } ?? PairingStore()
 let server = RemoteServer(computerName: computerName, port: port, pairing: pairing)
 let mpv = MPVConnection(socketPath: socketPath, exitsWithMPV: exitsWithMPV)
 let thumbnails = Thumbnailer(mpv: mpv, server: server)

@@ -127,7 +127,7 @@ final class RemoteServer {
     // MARK: Sessions
 
     private func accept(_ connection: NWConnection) {
-        let session = ClientSession(connection: connection)
+        let session = ClientSession(connection: connection, source: Self.source(of: connection))
         let id = ObjectIdentifier(session)
         session.onMessage = { [weak self] session, message in self?.handle(message, from: session) }
         session.onClose = { [weak self] session in
@@ -145,14 +145,15 @@ final class RemoteServer {
                 authorize(session, deviceName: deviceName)
             } else {
                 session.send(.pairingRequired(computerName: computerName))
-                pairing.announceCode(reason: "A phone wants to pair.")
+                pairing.announceCode(reason: "A phone wants to pair.", to: session.source)
             }
         case .pair(let code, let deviceName):
-            if let token = pairing.pair(code: code, deviceName: deviceName) {
+            switch pairing.pair(code: code, deviceName: deviceName, from: session.source) {
+            case .paired(let token):
                 session.send(.paired(token: token))
                 authorize(session, deviceName: deviceName)
                 log("Paired with \(deviceName)")
-            } else {
+            case .wrongCode, .lockedOut:
                 session.send(.pairingFailed)
             }
         case .command(let command):
@@ -161,6 +162,22 @@ final class RemoteServer {
                 return
             }
             onCommand?(command)
+        }
+    }
+
+    /// Who is on the other end, as `PairingGuard` counts them.
+    private static func source(of connection: NWConnection) -> String {
+        guard case .hostPort(let host, _) = connection.endpoint else { return "unknown" }
+        switch host {
+        case .ipv4(let address):
+            return PairingGuard.source(of: Array(address.rawValue))
+        case .ipv6(let address):
+            if let mapped = address.asIPv4 { return PairingGuard.source(of: Array(mapped.rawValue)) }
+            return PairingGuard.source(of: Array(address.rawValue))
+        case .name(let name, _):
+            return name
+        @unknown default:
+            return "unknown"
         }
     }
 
@@ -178,6 +195,8 @@ final class RemoteServer {
 /// One phone's WebSocket connection.
 @MainActor
 final class ClientSession {
+    /// Where the phone is connecting from, for rationing pairing attempts.
+    let source: String
     var isAuthorized = false
     var deviceName = "A phone"
     var onMessage: ((ClientSession, ClientMessage) -> Void)?
@@ -186,8 +205,9 @@ final class ClientSession {
     private let connection: NWConnection
     private var isClosed = false
 
-    init(connection: NWConnection) {
+    init(connection: NWConnection, source: String) {
         self.connection = connection
+        self.source = source
     }
 
     func start() {
