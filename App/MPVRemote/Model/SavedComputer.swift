@@ -23,23 +23,19 @@ struct SavedComputer: Codable, Equatable {
         case .bonjour(let name):
             .service(name: name, type: RemoteService.bonjourType, domain: "local.", interface: nil)
         case .host(let host, let port):
-            .hostPort(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port) ?? 7655)
+            // As a URL, not a host and port: a WebSocket can't be opened to an IP address given as the latter.
+            ManualAddress(host: host, port: port).webSocketURL.map { NWEndpoint.url($0) }
+                ?? .hostPort(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port) ?? 7655)
         case .demo:
             nil
         }
     }
 
-    /// Accepts "192.168.1.20", "studio.local" or either with ":port".
+    /// Accepts "192.168.1.20", "studio.local", either with ":port", and IPv6
+    /// addresses, bare or as "[fe80::1]:port". Nothing else.
     init?(manualAddress: String) {
-        let text = manualAddress.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return nil }
-        var host = text
-        var port = RemoteService.defaultPort
-        if let colon = text.lastIndex(of: ":"), let parsed = UInt16(text[text.index(after: colon)...]) {
-            host = String(text[..<colon])
-            port = parsed
-        }
-        self.init(name: host, address: .host(host, port: port))
+        guard let address = ManualAddress(manualAddress) else { return nil }
+        self.init(name: address.host, address: .host(address.host, port: address.port))
     }
 
     init(name: String, address: Address, token: String? = nil) {
@@ -79,6 +75,23 @@ struct SavedComputer: Codable, Equatable {
     static func forgetToken(for name: String) {
         tokens[name] = nil
     }
+
+    /// Drops a token wherever it's kept: a computer chosen under two names, such
+    /// as the address typed in and the name it answered with, has it under both.
+    static func forgetToken(_ token: String) {
+        tokens = tokens.filter { $0.value != token }
+    }
+
+    /// Tells the companion which phone is pairing, so pairing again replaces the
+    /// first time instead of adding to it. Made once per install.
+    static var deviceID: String {
+        if let id = UserDefaults.standard.string(forKey: deviceIDKey) { return id }
+        let id = UUID().uuidString
+        UserDefaults.standard.set(id, forKey: deviceIDKey)
+        return id
+    }
+
+    private static let deviceIDKey = "deviceID"
 
     private static var tokens: [String: String] {
         get { UserDefaults.standard.dictionary(forKey: tokensKey) as? [String: String] ?? [:] }

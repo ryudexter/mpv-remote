@@ -12,5 +12,6 @@ let package = Package(
     ],
     targets: [
         .target(name: "RemoteProtocol"),
+        .testTarget(name: "RemoteProtocolTests", dependencies: ["RemoteProtocol"]),
     ]
 )

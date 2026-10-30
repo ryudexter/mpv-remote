@@ -13,6 +13,9 @@ struct WatchRemoteView: View {
     @State private var lastCrownStep = 0
     @State private var showingOptions = false
 
+    /// The crown wraps around at the ends of this, which `Crown` accounts for.
+    private static let crownRange = -1_000.0...1_000.0
+
     var body: some View {
         Pad()
             .navigationTitle(link.state?.computerName ?? "MPV Remote")
@@ -33,14 +36,15 @@ struct WatchRemoteView: View {
             }
             .focusable()
             .digitalCrownRotation(
-                $crown, from: -1_000, through: 1_000, by: 1, sensitivity: .low,
-                isContinuous: true, isHapticFeedbackEnabled: true
+                $crown, from: Self.crownRange.lowerBound, through: Self.crownRange.upperBound, by: 1,
+                sensitivity: .low, isContinuous: true, isHapticFeedbackEnabled: true
             )
             .onChange(of: crown) { _, value in
                 // One volume step per crown detent.
                 let step = Int(value.rounded())
-                guard step != lastCrownStep else { return }
-                link.changeVolume(up: step > lastCrownStep)
+                let span = Int(Self.crownRange.upperBound - Self.crownRange.lowerBound) + 1
+                guard let up = Crown.isTurningUp(from: lastCrownStep, to: step, span: span) else { return }
+                link.changeVolume(up: up)
                 lastCrownStep = step
             }
             .onChange(of: scenePhase, initial: true) { _, phase in
@@ -205,12 +209,16 @@ private struct SwipeArea: View {
     /// Where the finger landed, or where it was when the last step was sent.
     @State private var anchor: CGPoint?
     @State private var didMove = false
+    @State private var touchStarted: Date?
     @State private var presses = 0
 
     /// How far a finger must travel before a touch counts as a swipe rather than a tap.
     private let swipeThreshold: CGFloat = 16
     /// Further travel for each extra step while the finger keeps dragging.
     private let stepDistance: CGFloat = 36
+    /// A touch that stays put for longer than this is a hand resting on the
+    /// pad or a press-and-hold, not a tap, and doesn't pause.
+    private let tapDuration: TimeInterval = 0.5
 
     var body: some View {
         Arrows()
@@ -243,13 +251,16 @@ private struct SwipeArea: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
+                        if touchStarted == nil { touchStarted = value.time }
                         touch = value.location
                         step(to: value.location, from: value.startLocation)
                     }
                     .onEnded { value in
                         // A quick flick can end before any change crossed the threshold.
                         step(to: value.location, from: value.startLocation)
-                        if !didMove { send(.togglePause) }
+                        let duration = value.time.timeIntervalSince(touchStarted ?? value.time)
+                        if !didMove, duration <= tapDuration { send(.togglePause) }
+                        touchStarted = nil
                         touch = nil
                         anchor = nil
                         didMove = false

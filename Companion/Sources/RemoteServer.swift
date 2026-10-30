@@ -11,6 +11,8 @@ final class RemoteServer {
     /// Called if the listener stops for good, as when another program already
     /// has the port (`.posix(.EADDRINUSE)`). Nothing is served after that.
     var onFailure: ((NWError) -> Void)?
+    /// Called each time the listener is up and phones can connect.
+    var onListening: (() -> Void)?
 
     /// Whether any paired phone is connected right now.
     var hasPhones: Bool { sessions.values.contains(where: \.isAuthorized) }
@@ -19,6 +21,7 @@ final class RemoteServer {
     private let port: NWEndpoint.Port
     private let pairing: PairingStore
     private var listener: NWListener?
+    private var restart: Task<Void, Never>?
     private var sessions: [ObjectIdentifier: ClientSession] = [:]
 
     private var latestState = PlayerState()
@@ -43,7 +46,9 @@ final class RemoteServer {
         listener.service = NWListener.Service(name: computerName, type: RemoteService.bonjourType)
         listener.stateUpdateHandler = { [weak self, port] state in
             switch state {
-            case .ready: log("Listening on port \(port), advertised over Bonjour")
+            case .ready:
+                log("Listening on port \(port), advertised over Bonjour")
+                MainActor.assumeIsolated { self?.onListening?() }
             case .failed(let error): MainActor.assumeIsolated { self?.fail(error) }
             default: break
             }
@@ -59,6 +64,23 @@ final class RemoteServer {
         listener?.cancel()
         listener = nil
         onFailure?(error)
+    }
+
+    /// Starts listening again after `delay`, as when another companion had the
+    /// port and may let go of it. Asks `onFailure` again if it still can't.
+    func startAgain(after delay: Duration) {
+        restart?.cancel()
+        restart = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self, self.listener == nil else { return }
+            do {
+                try self.start()
+            } catch let error as NWError {
+                self.fail(error)
+            } catch {
+                self.fail(.posix(.EIO))
+            }
+        }
     }
 
     /// Takes the latest player state and pushes it to paired phones, coalescing
@@ -105,7 +127,7 @@ final class RemoteServer {
     // MARK: Sessions
 
     private func accept(_ connection: NWConnection) {
-        let session = ClientSession(connection: connection)
+        let session = ClientSession(connection: connection, source: Self.source(of: connection))
         let id = ObjectIdentifier(session)
         session.onMessage = { [weak self] session, message in self?.handle(message, from: session) }
         session.onClose = { [weak self] session in
@@ -123,14 +145,15 @@ final class RemoteServer {
                 authorize(session, deviceName: deviceName)
             } else {
                 session.send(.pairingRequired(computerName: computerName))
-                pairing.announceCode(reason: "A phone wants to pair.")
+                pairing.announceCode(reason: "A phone wants to pair.", to: session.source)
             }
-        case .pair(let code, let deviceName):
-            if let token = pairing.pair(code: code, deviceName: deviceName) {
+        case .pair(let code, let deviceName, let deviceID):
+            switch pairing.pair(code: code, deviceName: deviceName, deviceID: deviceID, from: session.source) {
+            case .paired(let token):
                 session.send(.paired(token: token))
                 authorize(session, deviceName: deviceName)
                 log("Paired with \(deviceName)")
-            } else {
+            case .wrongCode, .lockedOut:
                 session.send(.pairingFailed)
             }
         case .command(let command):
@@ -139,6 +162,22 @@ final class RemoteServer {
                 return
             }
             onCommand?(command)
+        }
+    }
+
+    /// Who is on the other end, as `PairingGuard` counts them.
+    private static func source(of connection: NWConnection) -> String {
+        guard case .hostPort(let host, _) = connection.endpoint else { return "unknown" }
+        switch host {
+        case .ipv4(let address):
+            return PairingGuard.source(of: Array(address.rawValue))
+        case .ipv6(let address):
+            if let mapped = address.asIPv4 { return PairingGuard.source(of: Array(mapped.rawValue)) }
+            return PairingGuard.source(of: Array(address.rawValue))
+        case .name(let name, _):
+            return name
+        @unknown default:
+            return "unknown"
         }
     }
 
@@ -156,16 +195,26 @@ final class RemoteServer {
 /// One phone's WebSocket connection.
 @MainActor
 final class ClientSession {
+    /// Where the phone is connecting from, for rationing pairing attempts.
+    let source: String
     var isAuthorized = false
     var deviceName = "A phone"
     var onMessage: ((ClientSession, ClientMessage) -> Void)?
     var onClose: ((ClientSession) -> Void)?
 
+    /// How long a new connection has to say hello.
+    static let helloTimeout: Duration = .seconds(10)
+    /// How long one that isn't paired yet may wait, e.g. for someone to read out the code.
+    static let pairingTimeout: Duration = .seconds(300)
+
     private let connection: NWConnection
     private var isClosed = false
+    private var hasSpoken = false
+    private var timeouts: [Task<Void, Never>] = []
 
-    init(connection: NWConnection) {
+    init(connection: NWConnection, source: String) {
         self.connection = connection
+        self.source = source
     }
 
     func start() {
@@ -179,6 +228,18 @@ final class ClientSession {
         }
         connection.start(queue: .main)
         receive()
+        // Phones that never say hello, or never get as far as pairing, shouldn't be kept for ever.
+        closeAfter(Self.helloTimeout) { !$0.hasSpoken }
+        closeAfter(Self.pairingTimeout) { !$0.isAuthorized }
+    }
+
+    private func closeAfter(_ delay: Duration, if condition: @escaping @MainActor (ClientSession) -> Bool) {
+        timeouts.append(Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self, condition(self) else { return }
+            log("Closing a connection from \(self.source) that didn't \(self.hasSpoken ? "pair" : "say hello") in time")
+            self.close()
+        })
     }
 
     func send(_ message: ServerMessage) {
@@ -197,6 +258,7 @@ final class ClientSession {
                     return
                 }
                 if let data, let message = try? JSONDecoder().decode(ClientMessage.self, from: data) {
+                    self.hasSpoken = true
                     self.onMessage?(self, message)
                 }
                 self.receive()
@@ -207,6 +269,7 @@ final class ClientSession {
     private func close() {
         guard !isClosed else { return }
         isClosed = true
+        timeouts.forEach { $0.cancel() }
         connection.cancel()
         onClose?(self)
     }

@@ -38,6 +38,12 @@ IPC socket by itself, or reuses one mpv already has (like the
 changes. When a phone asks to pair, the 4-digit code appears over the video
 and as a notification. Its log is `~/Library/Logs/MPV Remote/companion.log`.
 
+The code is only four digits, so the companion rations guesses: a few wrong
+codes lock that phone's address out for a while, and the code changes (and
+guessing pauses for longer each time) when too many are wrong overall. It also
+shows the code less and less often while nobody pairs. If a second mpv window
+finds the port taken, its helper waits and takes over when the first one quits.
+
 Options go in `~/.config/mpv/script-opts/mpv-remote.conf`: `port=` and `name=`
 (how the Mac appears on the phone).
 
@@ -89,6 +95,12 @@ the formatting both apps share.
 It has run in the Watch and iPhone simulators, against the companion's server
 and in Demo Mode, including with the iPhone app in the background; not yet on
 a real Watch.
+
+## Tests
+
+`swift test --package-path Shared` runs the tests for the logic both apps and
+the companion share: address parsing, pairing rationing, the pairing list and
+the message format's compatibility with older versions.
 
 ## TestFlight
 

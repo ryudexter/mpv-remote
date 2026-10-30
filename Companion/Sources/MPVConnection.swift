@@ -36,6 +36,10 @@ final class MPVConnection {
     }
 
     func start() {
+        if socketPath.utf8.count > Self.maxSocketPathLength {
+            // mpv can't create such a socket either, so this would wait for ever and say nothing.
+            log("mpv's socket path is \(socketPath.utf8.count) bytes long, but a Unix socket's path can be at most \(Self.maxSocketPathLength), so mpv can't make it and this can't connect to it: \(socketPath). Use a shorter --input-ipc-server path.")
+        }
         connect()
     }
 
@@ -250,6 +254,9 @@ final class MPVConnection {
 
     // MARK: Socket
 
+    /// What fits in `sockaddr_un.sun_path`, less the terminating zero.
+    private static let maxSocketPathLength = MemoryLayout.size(ofValue: sockaddr_un().sun_path) - 1
+
     private static func openSocket(path: String) -> Int32? {
         let socket = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
         guard socket >= 0 else { return nil }
@@ -257,7 +264,7 @@ final class MPVConnection {
         address.sun_family = sa_family_t(AF_UNIX)
         address.sun_len = UInt8(MemoryLayout<sockaddr_un>.size)
         let pathBytes = Array(path.utf8)
-        guard pathBytes.count < MemoryLayout.size(ofValue: address.sun_path) else {
+        guard pathBytes.count <= maxSocketPathLength else {
             close(socket)
             return nil
         }

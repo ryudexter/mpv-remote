@@ -13,7 +13,10 @@ public enum ClientMessage: Codable, Sendable {
     /// First message on every connection. `token` is nil until this phone has paired.
     case hello(version: Int, token: String?)
     /// Answers `pairingRequired` with the code the companion printed.
-    case pair(code: String, deviceName: String)
+    /// `deviceID` is a random id the app makes once per install, so pairing
+    /// again replaces the phone's earlier entry. Apps from before it don't send
+    /// one, and companions from before it ignore it.
+    case pair(code: String, deviceName: String, deviceID: String? = nil)
     /// Only honoured once the connection has been authorised.
     case command(PlayerCommand)
 }
