@@ -22,6 +22,10 @@ if socket == "" then
     mp.set_property("input-ipc-server", socket)
 end
 socket = mp.command_native({ "expand-path", socket })
+if #socket > 103 then
+    -- A Unix socket's path can't be longer, so mpv can't make this one and the helper can't connect to it.
+    mp.msg.error("the IPC socket path is " .. #socket .. " bytes long, but at most 103 fit: " .. socket)
+end
 
 local args = {
     utils.join_path(mp.get_script_directory(), "mpv-remote"),
