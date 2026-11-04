@@ -72,6 +72,23 @@ final class PairingStore {
     /// Called with each code worth showing someone, e.g. on mpv's own screen.
     var onAnnounce: ((String) -> Void)?
 
+    /// Whether each code also goes up as a macOS notification, through
+    /// osascript. The standalone helper runs out of sight, so it does. An app
+    /// that shows the code itself turns this off: MPV Tiger, which as a
+    /// sandboxed App Store app shouldn't start other programs either.
+    var showsNotification = true
+
+    /// The phones that may connect, oldest first.
+    var pairedDevices: [PairedDevice] { devices.all }
+
+    /// Forgets every paired phone: each has to pair again with a new code.
+    /// Phones connected now stay connected until they disconnect.
+    func forgetAll() {
+        devices = PairedDevices()
+        save()
+        rotateCode()
+    }
+
     /// Logs the code and shows it as a notification, since the companion
     /// usually runs in the background with no terminal anyone is looking at.
     /// Anyone on the network can ask for this, so it isn't done every time:
@@ -83,6 +100,8 @@ final class PairingStore {
         guard guesses.allowsAnnouncement(for: source, at: .now) else { return }
         log("\(reason) Pairing code: \(code)")
         announced = (code, .now)
+        onAnnounce?(code)
+        guard showsNotification else { return }
         let notification = Process()
         notification.executableURL = URL(filePath: "/usr/bin/osascript")
         // Passed as arguments rather than spliced into the script, so no quoting can break it.
@@ -91,7 +110,6 @@ final class PairingStore {
             "Enter \(code) on your iPhone.", "MPV Remote pairing code",
         ]
         try? notification.run()
-        onAnnounce?(code)
     }
 
     private func rotateCode() {

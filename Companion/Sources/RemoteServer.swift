@@ -13,9 +13,15 @@ final class RemoteServer {
     var onFailure: ((NWError) -> Void)?
     /// Called each time the listener is up and phones can connect.
     var onListening: (() -> Void)?
+    /// Called when a paired phone connects or disconnects.
+    var onPhonesChanged: (() -> Void)?
 
     /// Whether any paired phone is connected right now.
     var hasPhones: Bool { sessions.values.contains(where: \.isAuthorized) }
+    /// The names of the paired phones connected right now.
+    var connectedPhones: [String] { sessions.values.filter(\.isAuthorized).map(\.deviceName).sorted() }
+    /// Whether the listener is running: started and neither stopped nor failed.
+    var isRunning: Bool { listener != nil }
 
     private let computerName: String
     private let port: NWEndpoint.Port
@@ -58,6 +64,18 @@ final class RemoteServer {
         }
         listener.start(queue: .main)
         self.listener = listener
+    }
+
+    /// Stops listening and disconnects every phone, as when the person turns
+    /// the remote off. `start()` starts it again.
+    func stop() {
+        restart?.cancel()
+        restart = nil
+        listener?.cancel()
+        listener = nil
+        for session in sessions.values { session.close() }
+        sessions.removeAll()
+        onPhonesChanged?()
     }
 
     private func fail(_ error: NWError) {
@@ -131,8 +149,11 @@ final class RemoteServer {
         let id = ObjectIdentifier(session)
         session.onMessage = { [weak self] session, message in self?.handle(message, from: session) }
         session.onClose = { [weak self] session in
-            if session.isAuthorized { log("\(session.deviceName) disconnected") }
             self?.sessions[id] = nil
+            if session.isAuthorized {
+                log("\(session.deviceName) disconnected")
+                self?.onPhonesChanged?()
+            }
         }
         sessions[id] = session
         session.start()
@@ -189,6 +210,7 @@ final class RemoteServer {
         if let latestThumbnail { session.send(.thumbnail(jpeg: latestThumbnail)) }
         log("\(deviceName) connected")
         onPhoneConnected?()
+        onPhonesChanged?()
     }
 }
 
@@ -266,7 +288,7 @@ final class ClientSession {
         }
     }
 
-    private func close() {
+    func close() {
         guard !isClosed else { return }
         isClosed = true
         timeouts.forEach { $0.cancel() }
