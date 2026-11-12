@@ -8,32 +8,54 @@ struct PairingView: View {
     @FocusState private var isFocused: Bool
 
     private let length = 4
+    private static let contentID = "content"
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 28) {
-                Image(systemName: "laptopcomputer.and.iphone")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.tint)
-                    .symbolRenderingMode(.hierarchical)
+            // Scrolls rather than squeezing: above the keyboard on a small
+            // iPhone there isn't room for it all, and the instructions were
+            // cut off after a line ("Type the code that appears over the vi…").
+            ScrollViewReader { scroller in
+                ScrollView {
+                    VStack(spacing: 28) {
+                        Image(systemName: "laptopcomputer.and.iphone")
+                            .font(.system(size: 56))
+                            .foregroundStyle(.tint)
+                            .symbolRenderingMode(.hierarchical)
 
-                VStack(spacing: 8) {
-                    Text("Enter Pairing Code")
-                        .font(.title2.bold())
-                    Text("Type the code that appears over the video in mpv on \(remote.computer?.name ?? "your computer").")
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
+                        VStack(spacing: 8) {
+                            Text("Enter Pairing Code")
+                                .font(.title2.bold())
+                            Text("Type the code that appears over the video in mpv on \(remote.computer?.name ?? "your computer").")
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        codeField
+                            .modifier(Shake(animatableData: CGFloat(attempts)))
+
+                        Text(remote.pairingFailed ? "That code didn't match. Try again." : " ")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(32)
+                    .frame(maxWidth: .infinity)
+                    .id(Self.contentID)
                 }
-
-                codeField
-                    .modifier(Shake(animatableData: CGFloat(attempts)))
-
-                Text(remote.pairingFailed ? "That code didn't match. Try again." : " ")
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.never)
+                // When it doesn't all fit, keep the boxes and the "didn't match"
+                // line in sight above the keyboard; the explanation scrolls off
+                // the top, where it can be scrolled back to.
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                    withAnimation { scroller.scrollTo(Self.contentID, anchor: .bottom) }
+                }
+                .onChange(of: remote.pairingFailed) { _, failed in
+                    guard failed else { return }
+                    withAnimation { scroller.scrollTo(Self.contentID, anchor: .bottom) }
+                }
             }
-            .padding(32)
-            .frame(maxHeight: .infinity, alignment: .top)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { remote.forgetComputer() }
