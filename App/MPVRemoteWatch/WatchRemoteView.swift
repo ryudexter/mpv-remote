@@ -176,27 +176,15 @@ private struct Hint: View {
 
     var body: some View {
         if let state = link.state {
-            let name = state.computerName ?? ""
-            VStack(spacing: 4) {
-                switch state.connection {
-                case .noComputer:
-                    Image(systemName: "iphone").font(.title3)
-                    Text("Choose your computer in MPV Remote on your iPhone.")
-                case .needsPairing:
-                    Image(systemName: "iphone").font(.title3)
-                    Text("Open MPV Remote on your iPhone to pair with \(name).")
-                case .connecting:
-                    ProgressView().frame(height: 24)
-                    Text("Connecting to \(name)…")
-                case .unreachable:
-                    Image(systemName: "wifi.exclamationmark").font(.title3)
-                    Text("Can't reach \(name). Open a video in mpv on it.")
-                case .connected:
-                    Image(systemName: "play.slash").font(.title3)
-                    Text(state.player.isRunning
-                         ? "mpv is open on \(name), but nothing is loaded."
-                         : "Open a video with mpv on \(name).")
-                }
+            // Above the keys there's room for an icon and two lines, which on
+            // the smaller Watches (the 40mm SE) cut off what to do ("Open MPV
+            // Remote on your iPhone to pair w…"). So the icon makes way first,
+            // and only then does the text get smaller.
+            ViewThatFits(in: .vertical) {
+                hint(for: state, showsIcon: true)
+                hint(for: state, showsIcon: false)
+                hint(for: state, showsIcon: false)
+                    .minimumScaleFactor(0.7)
             }
             .font(.footnote)
             .multilineTextAlignment(.center)
@@ -204,6 +192,47 @@ private struct Hint: View {
         } else {
             // Until the iPhone has answered.
             ProgressView()
+        }
+    }
+
+    private func hint(for state: WatchState, showsIcon: Bool) -> some View {
+        VStack(spacing: 4) {
+            if showsIcon {
+                icon(for: state.connection)
+            }
+            Text(message(for: state))
+        }
+    }
+
+    @ViewBuilder
+    private func icon(for connection: WatchState.Connection) -> some View {
+        switch connection {
+        case .noComputer, .needsPairing:
+            Image(systemName: "iphone").font(.title3)
+        case .connecting:
+            ProgressView().frame(height: 24)
+        case .unreachable:
+            Image(systemName: "wifi.exclamationmark").font(.title3)
+        case .connected:
+            Image(systemName: "play.slash").font(.title3)
+        }
+    }
+
+    private func message(for state: WatchState) -> LocalizedStringKey {
+        let name = state.computerName ?? ""
+        switch state.connection {
+        case .noComputer:
+            return "Choose your computer in MPV Remote on your iPhone."
+        case .needsPairing:
+            return "Open MPV Remote on your iPhone to pair with \(name)."
+        case .connecting:
+            return "Connecting to \(name)…"
+        case .unreachable:
+            return "Can't reach \(name). Open a video in mpv on it."
+        case .connected:
+            return state.player.isRunning
+                ? "mpv is open on \(name), but nothing is loaded."
+                : "Open a video with mpv on \(name)."
         }
     }
 }
