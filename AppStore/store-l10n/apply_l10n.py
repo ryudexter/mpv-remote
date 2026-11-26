@@ -24,8 +24,10 @@ live and no version 1.4 existed, so nothing was editable.
        en-US privacy policy URL. If App Store Connect refuses a POST with HTTP 409 (an app info in review does that),
        that locale goes "version-first": step 2 creates its version localization, Apple then adds the locale to the
        app info with en-US's name, and step 3 PATCHes the name and subtitle on.
-    2. version: PATCH the locales it has; POST the new ones (description, keywords, promotional text, What's New,
-       support URL). A new version starts with an empty promotional text, so it is always written.
+    2. version: PATCH the locales it has, read again after step 1 (App Store Connect adds an empty version
+       localization for each locale step 1 adds to the app info); POST the new ones (description, keywords,
+       promotional text, What's New, support URL). A new version starts with an empty promotional text, so it is
+       always written.
     3. app info again, for the version-first locales.
     Every write is read back and compared; the states of all versions and app infos are printed at the end to show
     nothing else moved.
@@ -364,6 +366,10 @@ def apply():
         print(f"  HTTP 409 for {later}: these go version-first (step 3).")
 
     print("2. Version")
+    # Adding a locale to the app info makes App Store Connect add an empty version localization for it too
+    # (seen 2026-11-26 on 1.4), so a POST for it would be refused: read them again and PATCH those instead.
+    if not DRY:
+        have_ver = localizations(ver_path)
     for loc, fields in want_ver.items():
         if loc in have_ver:
             change = {k: v for k, v in fields.items() if have_ver[loc]["attributes"].get(k) != v}
