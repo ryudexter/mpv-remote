@@ -1,6 +1,6 @@
 # MPV Player Remote: localized App Store text for 1.4 (proposal, 2026-11-24)
 
-**Status: written, nothing applied.** iOS 1.3 is live and no version 1.4 exists in App Store Connect, so nothing is
+**Status: applied 2026-11-26 to iOS 1.4 (`e1a6a8e6`, all 14 locales, app info `48b5824a`), not submitted; the zh name suffixes were not used.** Originally: written, nothing applied. iOS 1.3 is live and no version 1.4 exists in App Store Connect, so nothing is
 editable. Everything below goes on with 1.4 (main already has the 1.4 number). The text is in `locales.json`; the
 searches behind it are in `baseline-2026-11-24.md`; `apply_l10n.py` checks and applies it.
 
