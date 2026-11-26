@@ -61,7 +61,10 @@ Other ways to run the companion, one at a time since they share a port:
 ### On the iPhone
 
 Run the app from Xcode. It finds the Mac on the network by itself; tap it and
-enter the code. After that the phone reconnects without asking. *Try the Demo*
+enter the code. After that the phone reconnects without asking. Each time it
+connects, a pixel-art tick (made with Pixel Lab, the same as Cingle Remote's)
+comes out of the Dynamic Island or the notch, sparkles and goes back in
+(`ConnectedTick.swift`). *Try the Demo*
 on the first screen runs a pretend player with no Mac at all — which is also
 how App Review can try the app.
 
