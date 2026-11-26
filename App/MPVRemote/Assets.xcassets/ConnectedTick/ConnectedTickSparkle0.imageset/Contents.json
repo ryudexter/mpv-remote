@@ -1,0 +1,17 @@
+{
+  "images" : [
+    {
+      "filename" : "ConnectedTickSparkle0.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  },
+  "properties" : {
+    "compression-type" : "lossless",
+    "template-rendering-intent" : "original"
+  }
+}

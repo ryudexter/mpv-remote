@@ -19,7 +19,8 @@ searches behind it are in `baseline-2026-11-24.md`; `apply_l10n.py` checks and a
    double-tap to skip, the iPhone's volume buttons, Enter Address Manually and Try the Demo, and has a plain
    "FREE, WITH NOTHING TO BUY" section (no ads, no in-app purchases, no subscription). Price words stay in the
    description only, as Apple asked after the Tiger rejection.
-5. **What's New for 1.4**, true to the commits since the 1.3 build (f3800cc): the Watch's bigger Play/Pause button
+5. **What's New for 1.4**, true to the commits since the 1.3 build (f3800cc): first (added 2026-11-26) the pixel-art
+   tick that comes out of the Dynamic Island or the notch once the app connects (build 5), then the Watch's bigger Play/Pause button
    and first-launch tips (#10), a quick tap needed to pause and no more wrong-way Digital Crown steps (766409d), hints
    that fit the smaller Watches (#13), typed IP addresses that connect, IPv6 included (d565868, 42c5df5), and the
    pairing screen on small iPhones (#12). Companion-only changes (pairing rationing, second mpv) are left out.

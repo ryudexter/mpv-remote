@@ -18,6 +18,11 @@ final class RemoteController {
 
     private(set) var computer: SavedComputer?
     private(set) var status = Status.connecting
+    /// Goes up each time the computer has just accepted the connection (or the
+    /// demo has started), for the tick at the top of the screen (ConnectedTick):
+    /// on opening the app or coming back to it, after pairing, and when a lost
+    /// connection comes back.
+    private(set) var connectedMoments = 0
     private(set) var state = PlayerState()
     /// Set when the last pairing code was wrong, cleared on the next attempt.
     private(set) var pairingFailed = false
@@ -84,6 +89,7 @@ final class RemoteController {
         self.demo = demo
         computer = SavedComputer(name: "Demo Mac", address: .demo, token: "demo")
         status = .connected
+        connectedMoments += 1
         receive(demo.state)
     }
 
@@ -273,6 +279,7 @@ final class RemoteController {
         switch message {
         case .welcome(let computerName):
             handshakeTask?.cancel()
+            if status != .connected { connectedMoments += 1 }
             status = .connected
             if computer?.name != computerName {
                 computer?.name = computerName

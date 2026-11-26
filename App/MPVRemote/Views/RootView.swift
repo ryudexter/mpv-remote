@@ -19,6 +19,9 @@ struct RootView: View {
             PairingView()
                 .environment(remote)
         }
+        // The tick out of the Dynamic Island or the notch once mpv's computer
+        // has accepted the connection, in a window over this one's.
+        .background { ConnectedTickWindow(remote: remote) }
         // Initially too: an app the Watch started in the background may have
         // let its connection go before anything was on screen.
         .onChange(of: scenePhase, initial: true) { _, phase in
